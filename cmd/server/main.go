@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/KL-Engineering/oauth2-server/internal/keys"
 	"github.com/KL-Engineering/oauth2-server/internal/monitoring"
 	"github.com/KL-Engineering/oauth2-server/internal/oauth2"
 	"github.com/julienschmidt/httprouter"
@@ -16,6 +17,8 @@ func NewServer() *http.Server {
 
 	router.GET("/oauth2/authorize", oauth2.AuthorizeHandler)
 	router.POST("/oauth2/token", oauth2.TokenHandler)
+
+	router.GET("/.well-known/jwks.json", keys.JWKS())
 
 	return &http.Server{
 		Addr:    "localhost:8080",

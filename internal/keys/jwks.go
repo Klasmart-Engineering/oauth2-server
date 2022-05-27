@@ -64,3 +64,34 @@ func parseRSAPrivateKey(bytes []byte) (*rsa.PrivateKey, error) {
 
 	return key, nil
 }
+
+func JWKS() httprouter.Handle {
+	// TODO: remove panics, replace with AWS KMS
+	bytes, err := loadRSAKeyFile(PUBLIC_KEY_PATH)
+	if err != nil {
+		panic(err)
+	}
+
+	key, err := parseRSAPublicKey(bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		// TODO: consider caching/saving to disk
+		set := jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{
+				{
+					Algorithm: "RS256",
+					Use:       "sig",
+					Key:       key,
+					// TODO: remove hardcoded kid - either store kid & some unique identifier for public key
+					// or use a one-way deterministic approach to derive kid from key
+					KeyID: KID,
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(set)
+	}
+}

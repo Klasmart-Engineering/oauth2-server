@@ -8,6 +8,7 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/ory/fosite v0.42.2
 	github.com/pkg/errors v0.9.1
+	gopkg.in/square/go-jose.v2 v2.6.0
 )
 
 require (
@@ -38,6 +39,5 @@ require (
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/tools v0.1.1 // indirect
 	gopkg.in/ini.v1 v1.57.0 // indirect
-	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
