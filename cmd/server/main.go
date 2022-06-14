@@ -7,6 +7,7 @@ import (
 	"github.com/KL-Engineering/oauth2-server/internal/crypto"
 	"github.com/KL-Engineering/oauth2-server/internal/monitoring"
 	"github.com/KL-Engineering/oauth2-server/internal/oauth2"
+	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -26,7 +27,11 @@ func NewServer() *http.Server {
 }
 
 func main() {
-	s := NewServer()
+	err := godotenv.Load()
+	if err != nil {
+		// Only necessary for local development
+		log.Print("INFO: Did not load .env file")
+	}
 
 	log.Println("Listening for requests at http://localhost:8080")
 	log.Fatal(s.ListenAndServe())

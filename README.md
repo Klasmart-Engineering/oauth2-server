@@ -2,6 +2,12 @@
 
 ## Setup
 
+### Environment
+
+```sh
+cp .env.example .env
+```
+
 ### Secrets
 
 ```sh
