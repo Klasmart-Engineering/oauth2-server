@@ -1,0 +1,20 @@
+version: "3.9"
+services:
+    localstack:
+        container_name: localstack_main
+        image: localstack/localstack:0.14
+        restart: always
+        network_mode: bridge
+        ports:
+        - 4566:4566
+        environment:
+          - SERVICES=dynamodb
+          - DEFAULT_REGION=localhost
+          - DATA_DIR=/tmp/localstack/data
+          - DOCKER_HOST=unix:///var/run/docker.sock
+        volumes:
+          - localstack_data:/tmp/localstack/data
+          - "/var/run/docker.sock:/var/run/docker.sock"
+volumes:
+  localstack_data:
+    {}
