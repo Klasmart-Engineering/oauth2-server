@@ -1,4 +1,4 @@
-package keys
+package crypto
 
 import (
 	"crypto/rsa"
@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	PRIVATE_KEY_PATH = "internal/keys/private.pem"
-	PUBLIC_KEY_PATH  = "internal/keys/public.pem"
+	PRIVATE_KEY_PATH = "internal/crypto/private.pem"
+	PUBLIC_KEY_PATH  = "internal/crypto/public.pem"
 	KID              = "2c7ef7a0-913f-458d-8c84-be44b3091cb3"
 )
 

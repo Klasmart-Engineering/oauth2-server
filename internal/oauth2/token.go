@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/KL-Engineering/oauth2-server/internal/keys"
+	"github.com/KL-Engineering/oauth2-server/internal/crypto"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -36,7 +36,7 @@ func TokenHandler(rw http.ResponseWriter, req *http.Request, _ httprouter.Params
 
 		session.Subject = accessRequest.GetClient().GetID()
 		// TODO remove hardcode
-		session.KID = keys.KID
+		session.KID = crypto.KID
 	}
 
 	// Next we create a response for the access request. Again, we iterate through the TokenEndpointHandlers

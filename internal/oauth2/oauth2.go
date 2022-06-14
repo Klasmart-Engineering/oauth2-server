@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/KL-Engineering/oauth2-server/internal/keys"
+	"github.com/KL-Engineering/oauth2-server/internal/crypto"
 	"github.com/ory/fosite/compose"
 	"github.com/pkg/errors"
 
@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	HMAC_SECRET_PATH = "internal/keys/hmac_secret"
+	HMAC_SECRET_PATH = "internal/crypto/hmac_secret"
 )
 
 // fosite requires four parameters for the server to get up and running:
@@ -48,7 +48,7 @@ var (
 	// privateKey is used to sign JWT tokens. The default strategy uses RS256 (RSA Signature with SHA-256)
 	// TODO remove hardcode
 	privateKey = Must(func() (interface{}, error) {
-		return keys.LoadPrivateKey()
+		return crypto.LoadPrivateKey()
 	}).(*rsa.PrivateKey)
 )
 
