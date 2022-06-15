@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/KL-Engineering/oauth2-server/internal/account"
+	"github.com/KL-Engineering/oauth2-server/internal/core"
 	"github.com/KL-Engineering/oauth2-server/internal/crypto"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/google/uuid"
@@ -24,6 +25,7 @@ func NewHandler(client *dynamodb.Client) *Handler {
 
 func (h *Handler) SetupRouter(router *httprouter.Router) {
 	router.POST("/clients", h.Create())
+	router.GET("/clients/:id", h.Get())
 }
 
 type CreateClientRequest struct {
@@ -93,5 +95,32 @@ func (h *Handler) Create() httprouter.Handle {
 		}
 
 		log.Printf("INFO: Created Client(id=%s)", client.ID)
+	})
+}
+
+func (h *Handler) Get() httprouter.Handle {
+	return account.Middleware(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+		account_id := account.GetAccountIdFromCtx(ctx)
+		id := ps.ByName("id")
+
+		client, err := h.repo.Get(ctx, GetOptions{account_id: account_id, id: id})
+		if err != nil {
+			if err == core.ErrNotFound {
+				http.Error(w, err.Error(), http.StatusNotFound)
+			} else {
+				log.Printf("ERROR: Get Client: %v", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(client)
+		if err != nil {
+			log.Printf("ERROR: JSON Marshal Client: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	})
 }

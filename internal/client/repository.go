@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/KL-Engineering/oauth2-server/internal/core"
 	"github.com/alexedwards/argon2id"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
@@ -71,6 +73,36 @@ func (repo *Repository) Create(ctx context.Context, opts CreateOptions) (*Client
 	_, err = repo.dynamodb.PutItem(ctx, &input)
 	if err != nil {
 		return nil, fmt.Errorf("dynamodb.PutItem Client: %w", err)
+	}
+
+	return &client, nil
+}
+
+type GetOptions struct {
+	account_id string
+	id         string
+}
+
+func (repo *Repository) Get(ctx context.Context, opts GetOptions) (*Client, error) {
+	output, err := repo.dynamodb.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.account_id)},
+			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", opts.id)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("dynamodb.GetItem Client: %w", err)
+	}
+
+	if output.Item == nil {
+		return nil, core.ErrNotFound
+	}
+
+	var client Client
+	err = attributevalue.UnmarshalMap(output.Item, &client)
+	if err != nil {
+		return nil, fmt.Errorf("dynamodb.UnmarshalMap Client: %w", err)
 	}
 
 	return &client, nil

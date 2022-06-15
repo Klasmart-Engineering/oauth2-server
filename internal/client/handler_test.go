@@ -12,6 +12,7 @@ import (
 	"github.com/KL-Engineering/oauth2-server/internal/storage"
 	"github.com/KL-Engineering/oauth2-server/internal/utils"
 	"github.com/alexedwards/argon2id"
+	"github.com/julienschmidt/httprouter"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -91,4 +92,61 @@ func TestCreateValid(t *testing.T) {
 
 	password_match := utils.Must(argon2id.ComparePasswordAndHash(response.Secret, client.Secret_Hash))
 	a.True(password_match)
+}
+
+func TestGetNotFound(t *testing.T) {
+	a := assert.New(t)
+
+	// TODO abstract
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+	repo := NewRepository(dynamoClient)
+
+	id := "non-existent"
+
+	r := httptest.NewRequest("GET", fmt.Sprintf("/clients/%s", id), nil)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	(&Handler{
+		repo: *repo,
+	}).Get()(w, r, []httprouter.Param{{Key: "id", Value: id}})
+
+	res := w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode)
+}
+
+func TestGetValid(t *testing.T) {
+	a := assert.New(t)
+
+	// TODO abstract
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+	repo := NewRepository(dynamoClient)
+
+	client := utils.Must(repo.Create(context.Background(), CreateOptions{secret: "pa$$word", name: "Test", android_id: uuid.NewString(), account_id: account_id}))
+
+	r := httptest.NewRequest("GET", fmt.Sprintf("/clients/%s", client.ID), nil)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	(&Handler{
+		repo: *repo,
+	}).Get()(w, r, []httprouter.Param{{Key: "id", Value: client.ID}})
+
+	res := w.Result()
+
+	var response Client
+	err := json.NewDecoder(res.Body).Decode(&response)
+	a.Nil(err)
+
+	a.Equal(response.ID, client.ID)
+	a.Equal(response.Name, client.Name)
+	a.Equal(response.Secret_Prefix, client.Secret_Prefix)
+	a.Equal(response.Secret_Hash, "")
+
+	a.Equal(res.StatusCode, http.StatusOK)
 }
