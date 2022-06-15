@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/KL-Engineering/oauth2-server/internal/core"
 	"github.com/KL-Engineering/oauth2-server/internal/storage"
 	"github.com/KL-Engineering/oauth2-server/internal/utils"
 	"github.com/alexedwards/argon2id"
@@ -149,4 +150,73 @@ func TestGetValid(t *testing.T) {
 	a.Equal(response.Secret_Hash, "")
 
 	a.Equal(res.StatusCode, http.StatusOK)
+}
+
+func TestDeleteNotFound(t *testing.T) {
+	a := assert.New(t)
+
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+
+	router := httprouter.New()
+	h := NewHandler(dynamoClient)
+	h.SetupRouter(router)
+
+	r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/clients/%s", uuid.New()), nil)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode)
+}
+
+func TestDelete(t *testing.T) {
+	a := assert.New(t)
+
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+	repo := NewRepository(dynamoClient)
+	router := httprouter.New()
+	h := &Handler{
+		repo: *repo,
+	}
+	h.SetupRouter(router)
+
+	client := utils.Must(
+		repo.Create(
+			context.Background(), CreateOptions{
+				secret:     "pa$$word",
+				name:       "Test",
+				android_id: uuid.NewString(),
+				account_id: account_id,
+			},
+		),
+	)
+
+	r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/clients/%s", client.ID), nil)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	a.Equal(http.StatusNoContent, res.StatusCode, "First DELETE returns NoContent")
+
+	empty_client, err := repo.Get(context.Background(), GetOptions{account_id: client.Account_ID, id: client.ID})
+	a.Equal(err, core.ErrNotFound, "Client is deleted")
+	a.Nil(empty_client)
+
+	w = httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res = w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode, "Second DELETE returns NotFound")
 }

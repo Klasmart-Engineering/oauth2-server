@@ -26,6 +26,7 @@ func NewHandler(client *dynamodb.Client) *Handler {
 func (h *Handler) SetupRouter(router *httprouter.Router) {
 	router.POST("/clients", h.Create())
 	router.GET("/clients/:id", h.Get())
+	router.DELETE("/clients/:id", h.Delete())
 }
 
 type CreateClientRequest struct {
@@ -122,5 +123,27 @@ func (h *Handler) Get() httprouter.Handle {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+	})
+}
+
+func (h *Handler) Delete() httprouter.Handle {
+	return account.Middleware(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+		account_id := account.GetAccountIdFromCtx(ctx)
+		id := ps.ByName("id")
+
+		err := h.repo.Delete(ctx, DeleteOptions{account_id: account_id, id: id})
+		if err != nil {
+			if err == core.ErrNotFound {
+				http.Error(w, err.Error(), http.StatusNotFound)
+			} else {
+				log.Printf("ERROR: Delete Client: %v", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+		w.Header().Set("Content-Type", "application/json")
 	})
 }

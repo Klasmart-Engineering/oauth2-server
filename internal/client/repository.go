@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/KL-Engineering/oauth2-server/internal/core"
@@ -106,4 +107,28 @@ func (repo *Repository) Get(ctx context.Context, opts GetOptions) (*Client, erro
 	}
 
 	return &client, nil
+}
+
+type DeleteOptions struct {
+	account_id string
+	id         string
+}
+
+func (repo *Repository) Delete(ctx context.Context, opts DeleteOptions) error {
+	_, err := repo.dynamodb.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.account_id)},
+			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", opts.id)},
+		},
+		ConditionExpression: aws.String("attribute_exists(pk)"),
+	})
+	if err != nil {
+		if apiErr := new(types.ConditionalCheckFailedException); errors.As(err, &apiErr) {
+			return core.ErrNotFound
+		}
+		return fmt.Errorf("dynamodb.DeleteItem Client: %w", err)
+	}
+
+	return nil
 }
