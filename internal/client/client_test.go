@@ -28,8 +28,6 @@ func TestJSONMarshal(t *testing.T) {
 		"id":            client.ID,
 		"name":          client.Name,
 		"secret_prefix": client.Secret_Prefix,
-		"android_id":    client.Android_ID,
-		"account_id":    client.Account_ID,
 	}))
 	a.JSONEq(string(bytes), string(expected), "Does not include 'secret'")
 }

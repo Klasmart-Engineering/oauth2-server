@@ -9,6 +9,7 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
@@ -27,6 +28,39 @@ func NewRepository(dynamodbClient *dynamodb.Client) *Repository {
 	return &Repository{
 		dynamodb: dynamodbClient,
 	}
+}
+
+type ListOptions struct {
+	account_id string
+}
+
+func (repo *Repository) List(ctx context.Context, opts ListOptions) ([]Client, error) {
+	key := expression.Key("pk").Equal(expression.Value(fmt.Sprintf("Account#%s", opts.account_id)))
+	expr, err := expression.NewBuilder().WithKeyCondition(key).Build()
+	if err != nil {
+		return nil, fmt.Errorf("expression.NewBuilder: %w", err)
+	}
+
+	output, err := repo.dynamodb.Query(
+		ctx,
+		&dynamodb.QueryInput{
+			TableName:                 aws.String(tableName),
+			KeyConditionExpression:    expr.KeyCondition(),
+			ExpressionAttributeNames:  expr.Names(),
+			ExpressionAttributeValues: expr.Values(),
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("dynamodb.Query Client: %w", err)
+	}
+
+	var clients []Client
+	err = attributevalue.UnmarshalListOfMaps(output.Items, &clients)
+	if err != nil {
+		return nil, fmt.Errorf("dynamodb.UnmarshalMap Client: %w", err)
+	}
+
+	return clients, nil
 }
 
 type CreateOptions struct {

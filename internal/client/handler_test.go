@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"testing"
 
 	"github.com/KL-Engineering/oauth2-server/internal/core"
@@ -22,6 +24,91 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestListEmpty(t *testing.T) {
+	a := assert.New(t)
+
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+
+	router := httprouter.New()
+	h := NewHandler(dynamoClient)
+	h.SetupRouter(router)
+
+	r := httptest.NewRequest(http.MethodGet, "/clients", nil)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	var response ListResponse
+	err := json.NewDecoder(res.Body).Decode(&response)
+	a.Nil(err)
+
+	a.Equal(ListResponse{
+		Records: []Client{},
+	}, response)
+	a.Equal(http.StatusOK, res.StatusCode)
+}
+
+func TestList(t *testing.T) {
+	a := assert.New(t)
+
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+
+	repo := NewRepository(dynamoClient)
+
+	client1, err := repo.Create(context.Background(), CreateOptions{
+		secret:     "pa$$word",
+		name:       "Test1",
+		android_id: uuid.NewString(),
+		account_id: account_id,
+	})
+	a.Nil(err)
+	client2, err := repo.Create(context.Background(), CreateOptions{
+		secret:     "pa$$word",
+		name:       "Test2",
+		android_id: uuid.NewString(),
+		account_id: account_id,
+	})
+	a.Nil(err)
+
+	clients := []Client{
+		*client1,
+		*client2,
+	}
+	sort.Slice(clients, func(i, j int) bool {
+		return clients[i].ID < clients[j].ID
+	})
+
+	router := httprouter.New()
+	h := NewHandler(dynamoClient)
+	h.SetupRouter(router)
+
+	r := httptest.NewRequest(http.MethodGet, "/clients", nil)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	expected, err := json.Marshal(ListResponse{
+		Records: clients,
+	})
+	a.Nil(err)
+
+	actual, err := io.ReadAll(res.Body)
+	a.Nil(err)
+
+	a.JSONEq(string(expected), string(actual))
+	a.Equal(http.StatusOK, res.StatusCode)
+}
 
 func TestCreateNoBody(t *testing.T) {
 	a := assert.New(t)

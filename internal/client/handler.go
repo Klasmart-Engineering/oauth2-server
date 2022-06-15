@@ -24,9 +24,42 @@ func NewHandler(client *dynamodb.Client) *Handler {
 }
 
 func (h *Handler) SetupRouter(router *httprouter.Router) {
+	router.GET("/clients", h.List())
 	router.POST("/clients", h.Create())
 	router.GET("/clients/:id", h.Get())
 	router.DELETE("/clients/:id", h.Delete())
+}
+
+type ListResponse struct {
+	Records []Client `json:"records"`
+}
+
+func (h *Handler) List() httprouter.Handle {
+	return account.Middleware(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		// NB: This endpoint could easily support limit pagination
+		// However, we would need to implement cursor based pagination to have "offset" functionality
+		ctx := r.Context()
+		account_id := account.GetAccountIdFromCtx(ctx)
+
+		clients, err := h.repo.List(ctx, ListOptions{account_id: account_id})
+		if err != nil {
+			log.Printf("ERROR: List Client: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		response := ListResponse{
+			Records: clients,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+			log.Printf("ERROR: JSON Marshal []Client: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
 }
 
 type CreateClientRequest struct {
