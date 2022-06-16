@@ -171,13 +171,29 @@ type UpdateOptions struct {
 	account_id string
 	id         string
 	name       string
+	secret     string
 }
 
 func (repo *Repository) Update(ctx context.Context, opts UpdateOptions) (*Client, error) {
+	update := expression.UpdateBuilder{}
+	if opts.name != "" {
+		update = update.Set(expression.Name("name"), expression.Value(opts.name))
+	}
+
+	if opts.secret != "" {
+		hash, err := argon2id.CreateHash(opts.secret, argon2id.DefaultParams)
+		if err != nil {
+			return nil, fmt.Errorf("argon2id.CreateHash: %w", err)
+		}
+		update = update.Set(expression.Name("secret"), expression.Value(hash)).Set(
+			expression.Name("secret_prefix"), expression.Value(opts.secret[:secretPrefixLength]),
+		)
+	}
+
 	expr, err := expression.NewBuilder().WithCondition(
 		expression.AttributeExists(expression.Name("pk")),
 	).WithUpdate(
-		expression.Set(expression.Name("name"), expression.Value(opts.name)),
+		update,
 	).Build()
 
 	if err != nil {

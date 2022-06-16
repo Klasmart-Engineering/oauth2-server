@@ -382,3 +382,52 @@ func TestUpdate(t *testing.T) {
 
 	a.Equal(http.StatusOK, res.StatusCode)
 }
+
+func TestRegenerateSecret(t *testing.T) {
+	a := assert.New(t)
+
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+	repo := NewRepository(dynamoClient)
+	router := httprouter.New()
+	h := &Handler{
+		repo: *repo,
+	}
+	h.SetupRouter(router)
+
+	client := utils.Must(
+		repo.Create(
+			context.Background(), CreateOptions{
+				secret:     "pa$$word",
+				name:       "Test1",
+				android_id: uuid.NewString(),
+				account_id: account_id,
+			},
+		),
+	)
+
+	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s/secret", client.ID), nil)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	var response RegenerateSecretResponse
+	err := json.NewDecoder(res.Body).Decode(&response)
+	a.NoError(err)
+
+	updated_client, err := repo.Get(context.Background(), GetOptions{id: client.ID, account_id: account_id})
+	a.NoError(err)
+
+	a.Equal(client.ID, updated_client.ID, "Client.ID is unchanged")
+	a.Equal(client.Name, updated_client.Name, "Client.Name is unchanged")
+
+	a.Equal(updated_client.Secret_Prefix, response.Secret[:secretPrefixLength])
+	a.NotEqual(client.Secret_Prefix, updated_client.Secret_Prefix)
+
+	a.True(utils.Must(argon2id.ComparePasswordAndHash(response.Secret, updated_client.Secret_Hash)))
+	a.NotEqual(updated_client.Secret_Hash, client.Secret_Hash)
+}
