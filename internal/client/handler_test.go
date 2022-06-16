@@ -307,3 +307,78 @@ func TestDelete(t *testing.T) {
 
 	a.Equal(http.StatusNotFound, res.StatusCode, "Second DELETE returns NotFound")
 }
+
+func TestUpdateNotFound(t *testing.T) {
+	a := assert.New(t)
+
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+
+	router := httprouter.New()
+	h := NewHandler(dynamoClient)
+	h.SetupRouter(router)
+
+	body := &UpdateClientRequest{Name: "Test2"}
+	buf := new(bytes.Buffer)
+	err := json.NewEncoder(buf).Encode(body)
+	a.NoError(err)
+
+	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", uuid.New()), buf)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode)
+}
+
+func TestUpdate(t *testing.T) {
+	a := assert.New(t)
+
+	account_id := uuid.New().String()
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+	repo := NewRepository(dynamoClient)
+	router := httprouter.New()
+	h := &Handler{
+		repo: *repo,
+	}
+	h.SetupRouter(router)
+
+	client := utils.Must(
+		repo.Create(
+			context.Background(), CreateOptions{
+				secret:     "pa$$word",
+				name:       "Test1",
+				android_id: uuid.NewString(),
+				account_id: account_id,
+			},
+		),
+	)
+
+	body := &UpdateClientRequest{Name: "Test2"}
+	buf := new(bytes.Buffer)
+	err := json.NewEncoder(buf).Encode(body)
+	a.NoError(err)
+
+	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", client.ID), buf)
+	r.Header.Add("X-Account-Id", account_id)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	var response Client
+	err = json.NewDecoder(res.Body).Decode(&response)
+	a.NoError(err)
+
+	a.Equal(client.ID, response.ID)
+	a.Equal(body.Name, response.Name, "Name has been updated")
+	a.Equal(client.Secret_Prefix, response.Secret_Prefix)
+
+	a.Equal(http.StatusOK, res.StatusCode)
+}

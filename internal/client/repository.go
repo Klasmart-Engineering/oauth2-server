@@ -166,3 +166,52 @@ func (repo *Repository) Delete(ctx context.Context, opts DeleteOptions) error {
 
 	return nil
 }
+
+type UpdateOptions struct {
+	account_id string
+	id         string
+	name       string
+}
+
+func (repo *Repository) Update(ctx context.Context, opts UpdateOptions) (*Client, error) {
+	expr, err := expression.NewBuilder().WithCondition(
+		expression.AttributeExists(expression.Name("pk")),
+	).WithUpdate(
+		expression.Set(expression.Name("name"), expression.Value(opts.name)),
+	).Build()
+
+	if err != nil {
+		return nil, fmt.Errorf("expression.NewBuilder: %w", err)
+	}
+
+	output, err := repo.dynamodb.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]types.AttributeValue{
+			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.account_id)},
+			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", opts.id)},
+		},
+		ConditionExpression:       expr.Condition(),
+		UpdateExpression:          expr.Update(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+		ReturnValues:              "ALL_NEW",
+	})
+	if err != nil {
+		if apiErr := new(types.ConditionalCheckFailedException); errors.As(err, &apiErr) {
+			return nil, core.ErrNotFound
+		}
+		return nil, fmt.Errorf("dynamodb.UpdateItem Client: %w", err)
+	}
+
+	if output.Attributes == nil {
+		return nil, core.ErrNotFound
+	}
+
+	var client Client
+	err = attributevalue.UnmarshalMap(output.Attributes, &client)
+	if err != nil {
+		return nil, fmt.Errorf("dynamodb.UnmarshalMap Client: %w", err)
+	}
+
+	return &client, nil
+}

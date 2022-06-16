@@ -22,7 +22,7 @@ func TestJSONMarshal(t *testing.T) {
 	}
 
 	bytes, err := json.Marshal(client)
-	a.Nil(err)
+	a.NoError(err)
 
 	expected := utils.Must(json.Marshal(map[string]interface{}{
 		"id":            client.ID,

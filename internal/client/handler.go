@@ -28,6 +28,7 @@ func (h *Handler) SetupRouter(router *httprouter.Router) {
 	router.POST("/clients", h.Create())
 	router.GET("/clients/:id", h.Get())
 	router.DELETE("/clients/:id", h.Delete())
+	router.PATCH("/clients/:id", h.Update())
 }
 
 type ListResponse struct {
@@ -178,5 +179,44 @@ func (h *Handler) Delete() httprouter.Handle {
 
 		w.WriteHeader(http.StatusNoContent)
 		w.Header().Set("Content-Type", "application/json")
+	})
+}
+
+type UpdateClientRequest struct {
+	Name string `json:"name"`
+}
+
+func (h *Handler) Update() httprouter.Handle {
+	return account.Middleware(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		ctx := r.Context()
+		account_id := account.GetAccountIdFromCtx(ctx)
+		id := ps.ByName("id")
+
+		var req UpdateClientRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		client, err := h.repo.Update(ctx, UpdateOptions{account_id: account_id, id: id, name: req.Name})
+
+		if err != nil {
+			if err == core.ErrNotFound {
+				http.Error(w, err.Error(), http.StatusNotFound)
+			} else {
+				log.Printf("ERROR: Update Client: %v", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(client)
+		if err != nil {
+			log.Printf("ERROR: JSON Marshal Client: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	})
 }
