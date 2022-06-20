@@ -50,17 +50,9 @@ func (h *Handler) List() httprouter.Handle {
 			return
 		}
 
-		response := ListResponse{
+		core.JSONResponse(w, ListResponse{
 			Records: clients,
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(response)
-		if err != nil {
-			log.Printf("ERROR: JSON Marshal []Client: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		})
 	})
 }
 
@@ -115,6 +107,8 @@ func (h *Handler) Create() httprouter.Handle {
 			return
 		}
 
+		log.Printf("INFO: Created Client(id=%s)", client.ID)
+
 		clientResponse := CreateClientResponse{
 			ID:     client.ID,
 			Name:   client.Name,
@@ -122,15 +116,7 @@ func (h *Handler) Create() httprouter.Handle {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(clientResponse)
-		if err != nil {
-			log.Printf("ERROR: JSON Marshal ClientResponse: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("INFO: Created Client(id=%s)", client.ID)
+		core.JSONResponse(w, clientResponse)
 	})
 }
 
@@ -151,13 +137,7 @@ func (h *Handler) Get() httprouter.Handle {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(client)
-		if err != nil {
-			log.Printf("ERROR: JSON Marshal Client: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		core.JSONResponse(w, client)
 	})
 }
 
@@ -212,13 +192,7 @@ func (h *Handler) Update() httprouter.Handle {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(client)
-		if err != nil {
-			log.Printf("ERROR: JSON Marshal Client: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		core.JSONResponse(w, client)
 	})
 }
 
@@ -251,14 +225,8 @@ func (h *Handler) RegenerateSecret() httprouter.Handle {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(RegenerateSecretResponse{
+		core.JSONResponse(w, RegenerateSecretResponse{
 			Secret: secret,
 		})
-		if err != nil {
-			log.Printf("ERROR: JSON Marshal Client: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 	})
 }

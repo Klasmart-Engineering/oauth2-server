@@ -3,12 +3,12 @@ package crypto
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
+	"github.com/KL-Engineering/oauth2-server/internal/core"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 	"gopkg.in/square/go-jose.v2"
@@ -91,7 +91,6 @@ func JWKS() httprouter.Handle {
 				},
 			},
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(set)
+		core.JSONResponse(w, &set)
 	}
 }
