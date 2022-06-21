@@ -20,5 +20,6 @@ sudo chmod +x scripts/generate_secrets.sh
 ```
 docker-compose up
 cd terraform/dev
+terraform init
 terraform apply --auto-approve
 ```
