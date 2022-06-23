@@ -143,6 +143,39 @@ func (repo *Repository) Get(ctx context.Context, opts GetOptions) (*Client, erro
 	return &client, nil
 }
 
+func (repo *Repository) GetByID(ctx context.Context, id string) (*Client, error) {
+	key := expression.Key("sk").Equal(expression.Value(fmt.Sprintf("Client#%s", id)))
+	expr, err := expression.NewBuilder().WithKeyCondition(key).Build()
+	if err != nil {
+		return nil, fmt.Errorf("expression.NewBuilder: %w", err)
+	}
+
+	output, err := repo.dynamodb.Query(ctx, &dynamodb.QueryInput{
+		TableName:                 aws.String(tableName),
+		IndexName:                 aws.String("gsi-1"),
+		Limit:                     aws.Int32(1),
+		KeyConditionExpression:    expr.KeyCondition(),
+		ExpressionAttributeNames:  expr.Names(),
+		ExpressionAttributeValues: expr.Values(),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("dynamodb.Query Client: %w", err)
+	}
+
+	if output.Items == nil || len(output.Items) == 0 {
+		return nil, core.ErrNotFound
+	}
+
+	var client Client
+	err = attributevalue.UnmarshalMap(output.Items[0], &client)
+	if err != nil {
+		return nil, fmt.Errorf("dynamodb.UnmarshalMap Client: %w", err)
+	}
+
+	return &client, nil
+}
+
 type DeleteOptions struct {
 	account_id string
 	id         string
