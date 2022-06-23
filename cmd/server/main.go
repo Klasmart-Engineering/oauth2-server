@@ -19,7 +19,12 @@ func NewServer(d *dynamodb.Client) *http.Server {
 
 	router.GET("/health", monitoring.HealthHandler)
 
-	router.POST("/oauth2/token", oauth2.TokenHandler)
+	oauth2Provider, err := oauth2.NewProvider(d)
+	if err != nil {
+		log.Fatalf("ERROR: Setup of fosite.OAuth2Provider: %v", err)
+	}
+
+	oauth2.NewHandler(oauth2Provider).SetupRouter(router)
 
 	jwks, err := crypto.JWKS()
 	if err != nil {
