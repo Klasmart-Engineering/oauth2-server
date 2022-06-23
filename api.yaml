@@ -1,0 +1,433 @@
+openapi: 3.0.0
+info:
+    description: OAuth2 Server with Client Credentials grant, and Client management
+    version: 1.0.0
+    title: Kidsloop OAuth2 Server
+tags:
+    - name: Client
+      description: OAuth2 Client management
+    - name: OAuth2
+      description: OAuth2 implementation with Client Credentials grant support
+      externalDocs:
+          description: Background on OAuth2
+          url: https://datatracker.ietf.org/doc/html/rfc6749
+    - name: Metadata
+paths:
+    /oauth2/token:
+        post:
+            tags:
+                - OAuth2
+            description: >-
+                For more information, please refer to
+                https://tools.ietf.org/html/rfc6749#section-4
+            operationId: getToken
+            requestBody:
+                $ref: "#/components/requestBodies/TokenRequest"
+            responses:
+                "200":
+                    description: Successful operation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/TokenResponse"
+                "400":
+                    description: Bad request
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/OAuth2Error"
+    /clients:
+        get:
+            tags:
+                - Client
+            summary: Lists all clients for the authenticated `account_id`
+            description: ""
+            operationId: listCLients
+            responses:
+                "200":
+                    description: Successful operation
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    records:
+                                        type: array
+                                        items:
+                                            $ref: "#/components/schemas/Client"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+
+            security:
+                - bearerAuth: []
+        post:
+            tags:
+                - Client
+            summary: Create a new OAuth 2.0 Client
+            description: ""
+            operationId: createClient
+            requestBody:
+                $ref: "#/components/requestBodies/CreateClientRequest"
+            responses:
+                "201":
+                    description: Successful operation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/CreateClientResponse"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+            security:
+                - bearerAuth: []
+    "/clients/{client_id}":
+        delete:
+            tags:
+                - Client
+            summary: Delete an existing OAuth 2.0 Client by its ID
+            description: ""
+            operationId: deleteClient
+            parameters:
+                - name: client_id
+                  in: path
+                  description: The id of the OAuth 2.0 Client.
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+            responses:
+                "204":
+                    description: Successful operation
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "404":
+                    description: "Client does not exist, or Client belongs to another Account"
+                    $ref: "#/components/responses/NotFound"
+            security:
+                - bearerAuth: []
+        get:
+            tags:
+                - Client
+            summary: Get an OAuth 2.0 client by its ID
+            description: This endpoint never returns the
+                client secret.
+            operationId: readClient
+            parameters:
+                - name: client_id
+                  in: path
+                  description: The id of the OAuth 2.0 Client.
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+            responses:
+                "200":
+                    description: Successful operation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Client"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "404":
+                    description: "Client does not exist, or Client belongs to another Account"
+                    $ref: "#/components/responses/NotFound"
+            security:
+                - bearerAuth: []
+        patch:
+            tags:
+                - Client
+            summary: Update an existing OAuth 2.0 Client
+            operationId: writeClient
+            parameters:
+                - name: client_id
+                  in: path
+                  description: The id of the OAuth 2.0 Client.
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+            requestBody:
+                $ref: "#/components/requestBodies/UpdateClientRequest"
+            responses:
+                "200":
+                    description: Successful operation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Client"
+                "400":
+                    $ref: "#/components/responses/BadRequest"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "404":
+                    description: "Client does not exist, or Client belongs to another Account"
+                    $ref: "#/components/responses/NotFound"
+            security:
+                - bearerAuth: []
+    "/clients/{client_id}/secret":
+        patch:
+            tags:
+                - Client
+            summary: Create a new secret for an OAuth 2.0 Client by its ID
+            description: ""
+            operationId: regenerateClientSecret
+            parameters:
+                - name: client_id
+                  in: path
+                  description: The id of the OAuth 2.0 Client.
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+            responses:
+                "200":
+                    description: Successful operation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/RegenerateSecretResponse"
+                "401":
+                    $ref: "#/components/responses/Unauthorized"
+                "404":
+                    description: "Client does not exist, or Client belongs to another Account"
+                    $ref: "#/components/responses/NotFound"
+            security:
+                - bearerAuth: []
+    /health:
+        get:
+            tags:
+                - Metadata
+            summary: HTTP Server Status
+            responses:
+                "200":
+                    description: Healthy
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    status:
+                                        type: string
+                                        example: OK
+    /.well-known/jwks.json:
+        get:
+            tags:
+                - Metadata
+            summary: Get JSON Web Key Set
+            description:
+                JWKS endpoint containing the public keys used to verify any JWT issued
+                by the authorization server.
+            responses:
+                "200":
+                    description: A JSON object that represents a set of JWKs
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/JWKSetResponse"
+servers:
+    - url: http://localhost:8080
+components:
+    requestBodies:
+        CreateClientRequest:
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/CreateClientRequest"
+            required: true
+        UpdateClientRequest:
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/UpdateClientRequest"
+            required: true
+        TokenRequest:
+            content:
+                application/x-www-form-urlencoded:
+                    schema:
+                        type: object
+                        required: ["client_id", "client_secret", "grant_type"]
+                        properties:
+                            client_id:
+                                type: string
+                                format: uuid
+                            client_secret:
+                                type: string
+                            grant_type:
+                                type: string
+                                enum: ["client_credentials"]
+                                example: "client_credentials"
+
+    responses:
+        BadRequest:
+            description: Bad request
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Error"
+        Unauthorized:
+            description: Unauthorized
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Error"
+        Forbidden:
+            description: Forbidden
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Error"
+        NotFound:
+            description: The specified resource was not found
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/Error"
+
+    securitySchemes:
+        bearerAuth:
+            type: http
+            scheme: bearer
+            bearerFormat: JWT
+    schemas:
+        CreateClientRequest:
+            type: object
+            required:
+                - name
+            properties:
+                name:
+                    type: string
+                    description:
+                        Name is the human-readable string name of the client to be presented
+                        to the end-user during authorization.
+                    example: My client
+        UpdateClientRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description:
+                        Name is the human-readable string name of the client to be presented
+                        to the end-user during authorization.
+                    example: My client
+        CreateClientResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: ID is the id for this client.
+                name:
+                    type: string
+                    description:
+                        Name is the human-readable string name of the client to be presented
+                        to the end-user during authorization.
+                secret:
+                    type: string
+                    description:
+                        Secret is the client's secret. The secret will be included in the
+                        create request as cleartext, and then never again. The encrypted
+                        secret is stored so it is impossible to recover it. Tell your users
+                        that they need to write the secret down as it will not be made
+                        available again.
+        Client:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: ID is the id for this client.
+                name:
+                    type: string
+                    description:
+                        Name is the human-readable string name of the client to be presented
+                        to the end-user during authorization.
+                secret_prefix:
+                    type: string
+                    description: First 3 characters of the client secret
+        RegenerateSecretResponse:
+            type: object
+            properties:
+                secret:
+                    type: string
+                    description:
+                        Secret is the client's secret. The secret will be included in the
+                        create request as cleartext, and then never again. The encrypted
+                        secret is stored so it is impossible to recover it. Tell your users
+                        that they need to write the secret down as it will not be made
+                        available again.
+        JWKSetResponse:
+            type: object
+            properties:
+                keys:
+                    type: array
+                    description: The value of the "keys" parameter is an array of JWK values
+                    items:
+                        $ref: "#/components/schemas/JWK"
+        JWK:
+            type: object
+            properties:
+                kty:
+                    type: string
+                    description:
+                        The "kty" (key type) parameter identifies the cryptographic
+                        algorithm family used with the key, such as "RSA" or "EC"
+                use:
+                    type: string
+                    description:
+                        The "use" (public key use) parameter identifies the intended use of
+                        the public key
+                alg:
+                    type: string
+                    description:
+                        The "alg" (algorithm) parameter identifies the algorithm intended
+                        for use with the key
+                kid:
+                    type: string
+                    description: The "kid" (key ID) parameter is used to match a specific key
+                n:
+                    type: string
+                    description: The modulus for the RSA public key.
+                e:
+                    type: string
+                    description: The exponent for the RSA public key.
+        TokenResponse:
+            type: object
+            properties:
+                access_token:
+                    description: The access token issued by the authorization server.
+                    type: string
+                expires_in:
+                    description: |-
+                        The lifetime in seconds of the access token.  For
+                        example, the value "3600" denotes that the access token will
+                        expire in one hour from the time the response was generated.
+                    type: integer
+                    format: int64
+                scope:
+                    description: The scope of the access token
+                    type: string
+                token_type:
+                    description: The type of the token issued
+                    type: string
+        Error:
+            type: object
+            properties:
+                error:
+                    type: object
+                    properties:
+                        message:
+                            type: string
+                        code:
+                            type: string
+                        type:
+                            type: string
+
+        OAuth2Error:
+            type: object
+            properties:
+                error:
+                    type: string
+                error_description:
+                    type: string
