@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/KL-Engineering/oauth2-server/internal/crypto"
 	"github.com/julienschmidt/httprouter"
 	"github.com/ory/fosite"
 )
@@ -47,9 +46,9 @@ func (h *Handler) Token(rw http.ResponseWriter, req *http.Request, _ httprouter.
 			accessRequest.GrantScope(scope)
 		}
 
-		session.Subject = accessRequest.GetClient().GetID()
-		// TODO remove hardcode
-		session.KID = crypto.KID
+		client := accessRequest.GetClient()
+
+		session.WithClient(client)
 	}
 
 	// Next we create a response for the access request. Again, we iterate through the TokenEndpointHandlers

@@ -3,6 +3,7 @@ package oauth2
 import (
 	"time"
 
+	"github.com/KL-Engineering/oauth2-server/internal/crypto"
 	"github.com/mohae/deepcopy"
 
 	"github.com/ory/fosite"
@@ -18,6 +19,9 @@ type Session struct {
 	*openid.DefaultSession `json:"idToken"`
 	Extra                  map[string]interface{} `json:"extra"`
 	KID                    string
+	AccountID              string
+	AndroidID              string
+	// TODO: SubscriptionID
 }
 
 func NewSession(subject string) *Session {
@@ -39,6 +43,16 @@ func NewSession(subject string) *Session {
 		},
 		Extra: map[string]interface{}{},
 	}
+}
+
+// Populate Session object based on OAuth2 Client
+func (s *Session) WithClient(client fosite.Client) {
+	s.Subject = client.GetID()
+	// TODO remove hardcode
+	s.KID = crypto.KID
+
+	s.AccountID = client.(CustomFositeClient).GetAccountID()
+	s.AndroidID = client.(CustomFositeClient).GetAndroidID()
 }
 
 func (s *Session) GetJWTClaims() jwt.JWTClaimsContainer {
@@ -63,6 +77,8 @@ func (s *Session) GetJWTClaims() jwt.JWTClaimsContainer {
 	if claims.Extra == nil {
 		claims.Extra = map[string]interface{}{}
 	}
+	claims.Extra["account_id"] = s.AccountID
+	claims.Extra["android_id"] = s.AndroidID
 	return claims
 }
 

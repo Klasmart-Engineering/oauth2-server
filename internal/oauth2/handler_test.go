@@ -238,8 +238,9 @@ func assertTokenPayloadValid(a *assert.Assertions, tokenResponse *oauth2.Token, 
 	a.Equal([]interface{}{}, claims["scp"], "scopes is empty")
 	a.Equal(client.ID, claims["sub"])
 
-	// TODO assertions on `account_id`, `android_id`, `subscription_id` etc. claims
-	// once they are added to the JWT
+	a.Equal(client.Account_ID, claims["account_id"])
+	a.Equal(client.Android_ID, claims["android_id"])
+	// TODO `subscription_id` claim
 }
 
 func assertTokenHeaderValid(a *assert.Assertions, tokenResponse *oauth2.Token) {

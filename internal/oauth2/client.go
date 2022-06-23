@@ -9,6 +9,12 @@ type FositeClient struct {
 	model *client.Client
 }
 
+type CustomFositeClient interface {
+	fosite.Client
+	GetAccountID() string
+	GetAndroidID() string
+}
+
 var _ fosite.Client = (*FositeClient)(nil)
 
 func NewFositeClient(model *client.Client) *FositeClient {
@@ -50,4 +56,12 @@ func (c *FositeClient) IsPublic() bool {
 func (c *FositeClient) GetAudience() fosite.Arguments {
 	// Currently only support a single (global) platform "audience"
 	return []string{}
+}
+
+func (c *FositeClient) GetAccountID() string {
+	return c.model.Account_ID
+}
+
+func (c *FositeClient) GetAndroidID() string {
+	return c.model.Android_ID
 }
