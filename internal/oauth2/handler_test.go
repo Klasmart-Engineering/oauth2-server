@@ -2,13 +2,10 @@ package oauth2
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
-	"strings"
 	"testing"
 	"time"
 
@@ -153,7 +150,7 @@ func TestClientCredentialsValidAccessToken(t *testing.T) {
 
 	assertTokenPayloadValid(a, tokenResponse, client)
 
-	assertTokenHeaderValid(a, tokenResponse)
+	assertTokenHeaderValid(a, tokenResponse.AccessToken)
 
 	assertTokenSignatureValid(t, tokenResponse.AccessToken)
 }
@@ -217,11 +214,7 @@ func createCallbackHandler(a *assert.Assertions) httprouter.Handle {
 }
 
 func assertTokenPayloadValid(a *assert.Assertions, tokenResponse *oauth2.Token, client *client.Client) {
-	token, err := jwt.ParseSigned(tokenResponse.AccessToken)
-	a.NoError(err)
-
-	claims := make(map[string]interface{})
-	err = token.UnsafeClaimsWithoutVerification(&claims)
+	claims, err := crypto.DecodeJWTPayload(tokenResponse.AccessToken)
 	a.NoError(err)
 
 	a.Equal([]interface{}{}, claims["aud"], "audience is empty")
@@ -243,12 +236,8 @@ func assertTokenPayloadValid(a *assert.Assertions, tokenResponse *oauth2.Token, 
 	// TODO `subscription_id` claim
 }
 
-func assertTokenHeaderValid(a *assert.Assertions, tokenResponse *oauth2.Token) {
-	headersB64 := strings.Split(tokenResponse.AccessToken, ".")[0]
-	var headers map[string]interface{}
-	err := json.NewDecoder(
-		base64.NewDecoder(base64.RawURLEncoding, strings.NewReader(headersB64)),
-	).Decode(&headers)
+func assertTokenHeaderValid(a *assert.Assertions, token string) {
+	headers, err := crypto.DecodeJWTHeader(token)
 	a.NoError(err)
 
 	a.Equal("RS256", headers["alg"])
