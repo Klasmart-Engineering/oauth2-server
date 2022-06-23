@@ -43,7 +43,7 @@ func (h *Handler) List() httprouter.Handle {
 		ctx := r.Context()
 		account_id := account.GetAccountIdFromCtx(ctx)
 
-		clients, err := h.repo.List(ctx, ListOptions{account_id: account_id})
+		clients, err := h.repo.List(ctx, ListOptions{AccountID: account_id})
 		if err != nil {
 			log.Printf("ERROR: List Client: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -95,10 +95,10 @@ func (h *Handler) Create() httprouter.Handle {
 		}
 
 		client, err := h.repo.Create(ctx, CreateOptions{
-			secret:     secret,
-			name:       req.Name,
-			android_id: android_id.String(),
-			account_id: account_id,
+			Secret:    secret,
+			Name:      req.Name,
+			AndroidID: android_id.String(),
+			AccountID: account_id,
 		})
 		if err != nil {
 			// TODO specific codes in case of bad request
@@ -126,7 +126,7 @@ func (h *Handler) Get() httprouter.Handle {
 		account_id := account.GetAccountIdFromCtx(ctx)
 		id := ps.ByName("id")
 
-		client, err := h.repo.Get(ctx, GetOptions{account_id: account_id, id: id})
+		client, err := h.repo.Get(ctx, GetOptions{AccountID: account_id, ID: id})
 		if err != nil {
 			if err == core.ErrNotFound {
 				http.Error(w, err.Error(), http.StatusNotFound)
@@ -180,7 +180,7 @@ func (h *Handler) Update() httprouter.Handle {
 			return
 		}
 
-		client, err := h.repo.Update(ctx, UpdateOptions{account_id: account_id, id: id, name: req.Name})
+		client, err := h.repo.Update(ctx, UpdateOptions{AccountID: account_id, ID: id, Name: req.Name})
 
 		if err != nil {
 			if err == core.ErrNotFound {
@@ -213,7 +213,7 @@ func (h *Handler) RegenerateSecret() httprouter.Handle {
 			return
 		}
 
-		_, err = h.repo.Update(ctx, UpdateOptions{account_id: account_id, id: id, secret: secret})
+		_, err = h.repo.Update(ctx, UpdateOptions{AccountID: account_id, ID: id, Secret: secret})
 
 		if err != nil {
 			if err == core.ErrNotFound {

@@ -31,11 +31,11 @@ func NewRepository(dynamodbClient *dynamodb.Client) *Repository {
 }
 
 type ListOptions struct {
-	account_id string
+	AccountID string
 }
 
 func (repo *Repository) List(ctx context.Context, opts ListOptions) ([]Client, error) {
-	key := expression.Key("pk").Equal(expression.Value(fmt.Sprintf("Account#%s", opts.account_id)))
+	key := expression.Key("pk").Equal(expression.Value(fmt.Sprintf("Account#%s", opts.AccountID)))
 	expr, err := expression.NewBuilder().WithKeyCondition(key).Build()
 	if err != nil {
 		return nil, fmt.Errorf("expression.NewBuilder: %w", err)
@@ -64,14 +64,14 @@ func (repo *Repository) List(ctx context.Context, opts ListOptions) ([]Client, e
 }
 
 type CreateOptions struct {
-	secret     string
-	name       string
-	android_id string
-	account_id string
+	Secret    string
+	Name      string
+	AndroidID string
+	AccountID string
 }
 
 func (repo *Repository) Create(ctx context.Context, opts CreateOptions) (*Client, error) {
-	hash, err := argon2id.CreateHash(opts.secret, argon2id.DefaultParams)
+	hash, err := argon2id.CreateHash(opts.Secret, argon2id.DefaultParams)
 	if err != nil {
 		return nil, fmt.Errorf("argon2id.CreateHash: %w", err)
 	}
@@ -83,11 +83,11 @@ func (repo *Repository) Create(ctx context.Context, opts CreateOptions) (*Client
 
 	client := Client{
 		ID:            id.String(),
-		Secret_Prefix: opts.secret[:secretPrefixLength],
+		Secret_Prefix: opts.Secret[:secretPrefixLength],
 		Secret_Hash:   hash,
-		Name:          opts.name,
-		Android_ID:    opts.android_id,
-		Account_ID:    opts.account_id,
+		Name:          opts.Name,
+		Android_ID:    opts.AndroidID,
+		Account_ID:    opts.AccountID,
 	}
 
 	input := dynamodb.PutItemInput{
@@ -114,16 +114,16 @@ func (repo *Repository) Create(ctx context.Context, opts CreateOptions) (*Client
 }
 
 type GetOptions struct {
-	account_id string
-	id         string
+	AccountID string
+	ID        string
 }
 
 func (repo *Repository) Get(ctx context.Context, opts GetOptions) (*Client, error) {
 	output, err := repo.dynamodb.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(tableName),
 		Key: map[string]types.AttributeValue{
-			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.account_id)},
-			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", opts.id)},
+			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.AccountID)},
+			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", opts.ID)},
 		},
 	})
 	if err != nil {
@@ -168,25 +168,25 @@ func (repo *Repository) Delete(ctx context.Context, opts DeleteOptions) error {
 }
 
 type UpdateOptions struct {
-	account_id string
-	id         string
-	name       string
-	secret     string
+	AccountID string
+	ID        string
+	Name      string
+	Secret    string
 }
 
 func (repo *Repository) Update(ctx context.Context, opts UpdateOptions) (*Client, error) {
 	update := expression.UpdateBuilder{}
-	if opts.name != "" {
-		update = update.Set(expression.Name("name"), expression.Value(opts.name))
+	if opts.Name != "" {
+		update = update.Set(expression.Name("name"), expression.Value(opts.Name))
 	}
 
-	if opts.secret != "" {
-		hash, err := argon2id.CreateHash(opts.secret, argon2id.DefaultParams)
+	if opts.Secret != "" {
+		hash, err := argon2id.CreateHash(opts.Secret, argon2id.DefaultParams)
 		if err != nil {
 			return nil, fmt.Errorf("argon2id.CreateHash: %w", err)
 		}
 		update = update.Set(expression.Name("secret"), expression.Value(hash)).Set(
-			expression.Name("secret_prefix"), expression.Value(opts.secret[:secretPrefixLength]),
+			expression.Name("secret_prefix"), expression.Value(opts.Secret[:secretPrefixLength]),
 		)
 	}
 
@@ -203,8 +203,8 @@ func (repo *Repository) Update(ctx context.Context, opts UpdateOptions) (*Client
 	output, err := repo.dynamodb.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(tableName),
 		Key: map[string]types.AttributeValue{
-			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.account_id)},
-			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", opts.id)},
+			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.AccountID)},
+			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", opts.ID)},
 		},
 		ConditionExpression:       expr.Condition(),
 		UpdateExpression:          expr.Update(),

@@ -64,17 +64,17 @@ func TestList(t *testing.T) {
 	repo := NewRepository(dynamoClient)
 
 	client1, err := repo.Create(context.Background(), CreateOptions{
-		secret:     "pa$$word",
-		name:       "Test1",
-		android_id: uuid.NewString(),
-		account_id: account_id,
+		Secret:    "pa$$word",
+		Name:      "Test1",
+		AndroidID: uuid.NewString(),
+		AccountID: account_id,
 	})
 	a.Nil(err)
 	client2, err := repo.Create(context.Background(), CreateOptions{
-		secret:     "pa$$word",
-		name:       "Test2",
-		android_id: uuid.NewString(),
-		account_id: account_id,
+		Secret:    "pa$$word",
+		Name:      "Test2",
+		AndroidID: uuid.NewString(),
+		AccountID: account_id,
 	})
 	a.Nil(err)
 
@@ -215,7 +215,7 @@ func TestGetValid(t *testing.T) {
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 	repo := NewRepository(dynamoClient)
 
-	client := utils.Must(repo.Create(context.Background(), CreateOptions{secret: "pa$$word", name: "Test", android_id: uuid.NewString(), account_id: account_id}))
+	client := utils.Must(repo.Create(context.Background(), CreateOptions{Secret: "pa$$word", Name: "Test", AndroidID: uuid.NewString(), AccountID: account_id}))
 
 	r := httptest.NewRequest("GET", fmt.Sprintf("/clients/%s", client.ID), nil)
 	r.Header.Add("X-Account-Id", account_id)
@@ -277,10 +277,10 @@ func TestDelete(t *testing.T) {
 	client := utils.Must(
 		repo.Create(
 			context.Background(), CreateOptions{
-				secret:     "pa$$word",
-				name:       "Test",
-				android_id: uuid.NewString(),
-				account_id: account_id,
+				Secret:    "pa$$word",
+				Name:      "Test",
+				AndroidID: uuid.NewString(),
+				AccountID: account_id,
 			},
 		),
 	)
@@ -295,7 +295,7 @@ func TestDelete(t *testing.T) {
 
 	a.Equal(http.StatusNoContent, res.StatusCode, "First DELETE returns NoContent")
 
-	empty_client, err := repo.Get(context.Background(), GetOptions{account_id: client.Account_ID, id: client.ID})
+	empty_client, err := repo.Get(context.Background(), GetOptions{AccountID: client.Account_ID, ID: client.ID})
 	a.Equal(err, core.ErrNotFound, "Client is deleted")
 	a.Nil(empty_client)
 
@@ -351,10 +351,10 @@ func TestUpdate(t *testing.T) {
 	client := utils.Must(
 		repo.Create(
 			context.Background(), CreateOptions{
-				secret:     "pa$$word",
-				name:       "Test1",
-				android_id: uuid.NewString(),
-				account_id: account_id,
+				Secret:    "pa$$word",
+				Name:      "Test1",
+				AndroidID: uuid.NewString(),
+				AccountID: account_id,
 			},
 		),
 	)
@@ -399,10 +399,10 @@ func TestRegenerateSecret(t *testing.T) {
 	client := utils.Must(
 		repo.Create(
 			context.Background(), CreateOptions{
-				secret:     "pa$$word",
-				name:       "Test1",
-				android_id: uuid.NewString(),
-				account_id: account_id,
+				Secret:    "pa$$word",
+				Name:      "Test1",
+				AndroidID: uuid.NewString(),
+				AccountID: account_id,
 			},
 		),
 	)
@@ -419,7 +419,7 @@ func TestRegenerateSecret(t *testing.T) {
 	err := json.NewDecoder(res.Body).Decode(&response)
 	a.NoError(err)
 
-	updated_client, err := repo.Get(context.Background(), GetOptions{id: client.ID, account_id: account_id})
+	updated_client, err := repo.Get(context.Background(), GetOptions{ID: client.ID, AccountID: account_id})
 	a.NoError(err)
 
 	a.Equal(client.ID, updated_client.ID, "Client.ID is unchanged")
