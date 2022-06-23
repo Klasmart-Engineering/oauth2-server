@@ -4,41 +4,27 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
+	"github.com/KL-Engineering/oauth2-server/internal/test"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 )
-
-func testChdir(t *testing.T, dir string) func() {
-	old, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	return func() {
-		if err := os.Chdir(old); err != nil {
-			t.Fatalf("err: %v", err)
-		}
-	}
-}
 
 func TestJWKS(t *testing.T) {
 	a := assert.New(t)
 
 	// Temporarily chdir to project root, otherwise relative PEM filepaths
 	// can't be loaded
-	defer testChdir(t, "../..")()
+	defer test.Chdir(t, "../..")()
+
+	jwks, err := JWKS()
+	a.NoError(err)
 
 	router := httprouter.New()
-	router.GET("/", JWKS())
+	NewHandler(jwks).SetupRouter(router)
 
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/.well-known/jwks.json", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, r)
 	res := w.Result()
@@ -46,7 +32,7 @@ func TestJWKS(t *testing.T) {
 	a.Equal(http.StatusOK, res.StatusCode)
 
 	var response map[string]interface{}
-	err := json.NewDecoder(res.Body).Decode(&response)
+	err = json.NewDecoder(res.Body).Decode(&response)
 	a.NoError(err)
 
 	a.Len(response["keys"], 1)

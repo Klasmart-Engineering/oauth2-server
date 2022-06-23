@@ -21,10 +21,13 @@ func NewServer(d *dynamodb.Client) *http.Server {
 
 	router.POST("/oauth2/token", oauth2.TokenHandler)
 
-	router.GET("/.well-known/jwks.json", crypto.JWKS())
+	jwks, err := crypto.JWKS()
+	if err != nil {
+		log.Fatalf("ERROR: Setup of JWKS: %v", err)
+	}
 
-	clientHandler := client.NewHandler(d)
-	clientHandler.SetupRouter(router)
+	crypto.NewHandler(jwks).SetupRouter(router)
+	client.NewHandler(d).SetupRouter(router)
 
 	return &http.Server{
 		Addr:    "localhost:8080",

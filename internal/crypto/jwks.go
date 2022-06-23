@@ -6,10 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 
-	"github.com/KL-Engineering/oauth2-server/internal/core"
-	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 	"gopkg.in/square/go-jose.v2"
 )
@@ -65,32 +62,28 @@ func parseRSAPrivateKey(bytes []byte) (*rsa.PrivateKey, error) {
 	return key, nil
 }
 
-func JWKS() httprouter.Handle {
-	// TODO: remove panics, replace with AWS KMS
+func JWKS() (*jose.JSONWebKeySet, error) {
+	// TODO: replace with AWS KMS
 	bytes, err := loadRSAKeyFile(PUBLIC_KEY_PATH)
 	if err != nil {
-		panic(err)
+		return &jose.JSONWebKeySet{}, err
 	}
 
 	key, err := parseRSAPublicKey(bytes)
 	if err != nil {
-		panic(err)
+		return &jose.JSONWebKeySet{}, err
 	}
 
-	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		// TODO: consider caching/saving to disk
-		set := jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{
-				{
-					Algorithm: "RS256",
-					Use:       "sig",
-					Key:       key,
-					// TODO: remove hardcoded kid - either store kid & some unique identifier for public key
-					// or use a one-way deterministic approach to derive kid from key
-					KeyID: KID,
-				},
+	return &jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{
+			{
+				Algorithm: "RS256",
+				Use:       "sig",
+				Key:       key,
+				// TODO: remove hardcoded kid - either store kid & some unique identifier for public key
+				// or use a one-way deterministic approach to derive kid from key
+				KeyID: KID,
 			},
-		}
-		core.JSONResponse(w, &set)
-	}
+		},
+	}, nil
 }
