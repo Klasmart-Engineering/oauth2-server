@@ -19,8 +19,7 @@ func NewServer(d *dynamodb.Client) *http.Server {
 	router := httprouter.New()
 
 	core.NewHandler().SetupRouter(router)
-
-	router.GET("/health", monitoring.HealthHandler)
+	monitoring.NewHandler().SetupRouter(router)
 
 	oauth2Provider, err := oauth2.NewProvider(d)
 	if err != nil {
