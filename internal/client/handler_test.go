@@ -207,6 +207,32 @@ func TestGetNotFound(t *testing.T) {
 	a.Equal(http.StatusNotFound, res.StatusCode)
 }
 
+func TestGetUnauthorized(t *testing.T) {
+	a := assert.New(t)
+
+	db := utils.Must(storage.NewDynamoDBClient())
+
+	router := httprouter.New()
+	h := NewHandler(db)
+	client, err := h.repo.Create(context.Background(), CreateOptions{
+		Secret:    "pa$$word",
+		Name:      "Test",
+		AndroidID: uuid.NewString(),
+		AccountID: uuid.NewString(),
+	})
+	a.NoError(err)
+
+	r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/clients/%s", client.ID), nil)
+	r.Header.Add(account.IDHeader, uuid.NewString())
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode, "Client belongs to another AccountID")
+}
+
 func TestGetValid(t *testing.T) {
 	a := assert.New(t)
 
@@ -260,6 +286,32 @@ func TestDeleteNotFound(t *testing.T) {
 	res := w.Result()
 
 	a.Equal(http.StatusNotFound, res.StatusCode)
+}
+
+func TestDeleteUnauthorized(t *testing.T) {
+	a := assert.New(t)
+
+	db := utils.Must(storage.NewDynamoDBClient())
+
+	router := httprouter.New()
+	h := NewHandler(db)
+	client, err := h.repo.Create(context.Background(), CreateOptions{
+		Secret:    "pa$$word",
+		Name:      "Test",
+		AndroidID: uuid.NewString(),
+		AccountID: uuid.NewString(),
+	})
+	a.NoError(err)
+
+	r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/clients/%s", client.ID), nil)
+	r.Header.Add(account.IDHeader, uuid.NewString())
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode, "Client belongs to another AccountID")
 }
 
 func TestDelete(t *testing.T) {
@@ -334,6 +386,37 @@ func TestUpdateNotFound(t *testing.T) {
 	res := w.Result()
 
 	a.Equal(http.StatusNotFound, res.StatusCode)
+}
+
+func TestUpdateUnauthorized(t *testing.T) {
+	a := assert.New(t)
+
+	db := utils.Must(storage.NewDynamoDBClient())
+
+	router := httprouter.New()
+	h := NewHandler(db)
+	client, err := h.repo.Create(context.Background(), CreateOptions{
+		Secret:    "pa$$word",
+		Name:      "Test",
+		AndroidID: uuid.NewString(),
+		AccountID: uuid.NewString(),
+	})
+	a.NoError(err)
+
+	body := &UpdateClientRequest{Name: "Test2"}
+	buf := new(bytes.Buffer)
+	err = json.NewEncoder(buf).Encode(body)
+	a.NoError(err)
+
+	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", client.ID), buf)
+	r.Header.Add(account.IDHeader, uuid.NewString())
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, r)
+
+	res := w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode, "Client belongs to another AccountID")
 }
 
 func TestUpdate(t *testing.T) {
@@ -431,4 +514,49 @@ func TestRegenerateSecret(t *testing.T) {
 
 	a.True(utils.Must(argon2id.ComparePasswordAndHash(response.Secret, updated_client.Secret_Hash)))
 	a.NotEqual(updated_client.Secret_Hash, client.Secret_Hash)
+}
+
+func TestRegenerateSecretNotFound(t *testing.T) {
+	a := assert.New(t)
+
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+
+	router := httprouter.New()
+	h := NewHandler(dynamoClient)
+	h.SetupRouter(router)
+
+	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s/secret", uuid.NewString()), nil)
+	r.Header.Add(account.IDHeader, uuid.NewString())
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	res := w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode)
+}
+
+func TestRegenerateSecretUnauthorized(t *testing.T) {
+	a := assert.New(t)
+	dynamoClient := utils.Must(storage.NewDynamoDBClient())
+
+	router := httprouter.New()
+	h := NewHandler(dynamoClient)
+	h.SetupRouter(router)
+
+	client, err := h.repo.Create(
+		context.Background(), CreateOptions{
+			Secret:    "pa$$word",
+			Name:      "Test1",
+			AndroidID: uuid.NewString(),
+			AccountID: uuid.NewString(),
+		},
+	)
+	a.NoError(err)
+
+	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s/secret", client.ID), nil)
+	r.Header.Add(account.IDHeader, uuid.NewString())
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	res := w.Result()
+
+	a.Equal(http.StatusNotFound, res.StatusCode, "Client belongs to another AccountID")
 }
