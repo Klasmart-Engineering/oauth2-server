@@ -47,7 +47,7 @@ func TestListEmpty(t *testing.T) {
 
 	var response ListResponse
 	err := json.NewDecoder(res.Body).Decode(&response)
-	a.Nil(err)
+	a.NoError(err)
 
 	a.Equal(ListResponse{
 		Records: []Client{},
@@ -70,14 +70,14 @@ func TestList(t *testing.T) {
 		AndroidID: uuid.NewString(),
 		AccountID: account_id,
 	})
-	a.Nil(err)
+	a.NoError(err)
 	client2, err := repo.Create(context.Background(), CreateOptions{
 		Secret:    "pa$$word",
 		Name:      "Test2",
 		AndroidID: uuid.NewString(),
 		AccountID: account_id,
 	})
-	a.Nil(err)
+	a.NoError(err)
 
 	clients := []Client{
 		*client1,
@@ -102,10 +102,10 @@ func TestList(t *testing.T) {
 	expected, err := json.Marshal(ListResponse{
 		Records: clients,
 	})
-	a.Nil(err)
+	a.NoError(err)
 
 	actual, err := io.ReadAll(res.Body)
-	a.Nil(err)
+	a.NoError(err)
 
 	a.JSONEq(string(expected), string(actual))
 	a.Equal(http.StatusOK, res.StatusCode)
@@ -114,13 +114,14 @@ func TestList(t *testing.T) {
 func TestCreateNoBody(t *testing.T) {
 	a := assert.New(t)
 
-	r := httptest.NewRequest("POST", "/clients/", nil)
+	db := utils.Must(storage.NewDynamoDBClient())
+	h := NewHandler(db)
+	router := httprouter.New()
+	h.SetupRouter(router)
+
+	r := httptest.NewRequest(http.MethodPost, "/clients", nil)
 	w := httptest.NewRecorder()
-
-	(&Handler{
-		repo: *NewRepository(utils.Must(storage.NewDynamoDBClient())),
-	}).Create()(w, r, nil)
-
+	router.ServeHTTP(w, r)
 	res := w.Result()
 
 	a.Equal(res.StatusCode, http.StatusBadRequest)
@@ -129,32 +130,26 @@ func TestCreateNoBody(t *testing.T) {
 func TestCreateValid(t *testing.T) {
 	a := assert.New(t)
 
+	db := utils.Must(storage.NewDynamoDBClient())
+	h := NewHandler(db)
+	router := httprouter.New()
+	h.SetupRouter(router)
+
 	body := &CreateClientRequest{Name: "Test client"}
 	buf := new(bytes.Buffer)
-	err := json.NewEncoder(buf).Encode(body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	a.NoError(json.NewEncoder(buf).Encode(body))
 
-	r := httptest.NewRequest("POST", "/clients/", buf)
-	r.Header.Set("Content-Type", "application/json")
+	r := httptest.NewRequest(http.MethodPost, "/clients", buf)
 	w := httptest.NewRecorder()
 
-	// TODO abstract
 	account_id := uuid.New().String()
 	r.Header.Add(account.IDHeader, account_id)
 
-	dynamoClient := utils.Must(storage.NewDynamoDBClient())
-
-	(&Handler{
-		repo: *NewRepository(dynamoClient),
-	}).Create()(w, r, nil)
-
+	router.ServeHTTP(w, r)
 	res := w.Result()
 
 	var response CreateClientResponse
-	err = json.NewDecoder(res.Body).Decode(&response)
-	a.Nil(err)
+	a.NoError(json.NewDecoder(res.Body).Decode(&response))
 
 	a.True(utils.IsUUID(response.ID))
 	a.Equal(response.Name, body.Name)
@@ -162,13 +157,13 @@ func TestCreateValid(t *testing.T) {
 
 	a.Equal(res.StatusCode, http.StatusCreated)
 
-	output, err := dynamoClient.GetItem(context.Background(), &dynamodb.GetItemInput{Key: map[string]types.AttributeValue{
+	output, err := db.GetItem(context.Background(), &dynamodb.GetItemInput{Key: map[string]types.AttributeValue{
 		"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", account_id)},
 		"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", response.ID)},
 	},
 		TableName: aws.String(tableName),
 	})
-	a.Nil(err)
+	a.NoError(err)
 
 	var client Client
 	a.Nil(attributevalue.UnmarshalMap(output.Item, &client))
@@ -186,22 +181,15 @@ func TestCreateValid(t *testing.T) {
 func TestGetNotFound(t *testing.T) {
 	a := assert.New(t)
 
-	// TODO abstract
-	account_id := uuid.New().String()
+	db := utils.Must(storage.NewDynamoDBClient())
+	h := NewHandler(db)
+	router := httprouter.New()
+	h.SetupRouter(router)
 
-	dynamoClient := utils.Must(storage.NewDynamoDBClient())
-	repo := NewRepository(dynamoClient)
-
-	id := "non-existent"
-
-	r := httptest.NewRequest("GET", fmt.Sprintf("/clients/%s", id), nil)
-	r.Header.Add(account.IDHeader, account_id)
+	r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/clients/%s", uuid.NewString()), nil)
+	r.Header.Add(account.IDHeader, uuid.NewString())
 	w := httptest.NewRecorder()
-
-	(&Handler{
-		repo: *repo,
-	}).Get()(w, r, []httprouter.Param{{Key: "id", Value: id}})
-
+	router.ServeHTTP(w, r)
 	res := w.Result()
 
 	a.Equal(http.StatusNotFound, res.StatusCode)
@@ -240,23 +228,23 @@ func TestGetValid(t *testing.T) {
 	account_id := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
-	repo := NewRepository(dynamoClient)
 
-	client := utils.Must(repo.Create(context.Background(), CreateOptions{Secret: "pa$$word", Name: "Test", AndroidID: uuid.NewString(), AccountID: account_id}))
+	router := httprouter.New()
+	h := NewHandler(dynamoClient)
+	h.SetupRouter(router)
 
-	r := httptest.NewRequest("GET", fmt.Sprintf("/clients/%s", client.ID), nil)
+	client, err := h.repo.Create(context.Background(), CreateOptions{Secret: "pa$$word", Name: "Test", AndroidID: uuid.NewString(), AccountID: account_id})
+	a.NoError(err)
+
+	r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/clients/%s", client.ID), nil)
 	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
-
-	(&Handler{
-		repo: *repo,
-	}).Get()(w, r, []httprouter.Param{{Key: "id", Value: client.ID}})
-
+	router.ServeHTTP(w, r)
 	res := w.Result()
 
 	var response Client
-	err := json.NewDecoder(res.Body).Decode(&response)
-	a.Nil(err)
+	err = json.NewDecoder(res.Body).Decode(&response)
+	a.NoError(err)
 
 	a.Equal(response.ID, client.ID)
 	a.Equal(response.Name, client.Name)
@@ -320,35 +308,29 @@ func TestDelete(t *testing.T) {
 	account_id := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
-	repo := NewRepository(dynamoClient)
 	router := httprouter.New()
-	h := &Handler{
-		repo: *repo,
-	}
+	h := NewHandler(dynamoClient)
 	h.SetupRouter(router)
 
-	client := utils.Must(
-		repo.Create(
-			context.Background(), CreateOptions{
-				Secret:    "pa$$word",
-				Name:      "Test",
-				AndroidID: uuid.NewString(),
-				AccountID: account_id,
-			},
-		),
+	client, err := h.repo.Create(
+		context.Background(), CreateOptions{
+			Secret:    "pa$$word",
+			Name:      "Test",
+			AndroidID: uuid.NewString(),
+			AccountID: account_id,
+		},
 	)
+	a.NoError(err)
 
 	r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/clients/%s", client.ID), nil)
 	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
-
 	router.ServeHTTP(w, r)
-
 	res := w.Result()
 
 	a.Equal(http.StatusNoContent, res.StatusCode, "First DELETE returns NoContent")
 
-	empty_client, err := repo.Get(context.Background(), GetOptions{AccountID: client.Account_ID, ID: client.ID})
+	empty_client, err := h.repo.Get(context.Background(), GetOptions{AccountID: client.Account_ID, ID: client.ID})
 	a.Equal(err, core.ErrNotFound, "Client is deleted")
 	a.Nil(empty_client)
 
@@ -374,8 +356,7 @@ func TestUpdateNotFound(t *testing.T) {
 
 	body := &UpdateClientRequest{Name: "Test2"}
 	buf := new(bytes.Buffer)
-	err := json.NewEncoder(buf).Encode(body)
-	a.NoError(err)
+	a.NoError(json.NewEncoder(buf).Encode(body))
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", uuid.New()), buf)
 	r.Header.Add(account.IDHeader, account_id)
@@ -405,8 +386,7 @@ func TestUpdateUnauthorized(t *testing.T) {
 
 	body := &UpdateClientRequest{Name: "Test2"}
 	buf := new(bytes.Buffer)
-	err = json.NewEncoder(buf).Encode(body)
-	a.NoError(err)
+	a.NoError(json.NewEncoder(buf).Encode(body))
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", client.ID), buf)
 	r.Header.Add(account.IDHeader, uuid.NewString())
@@ -425,28 +405,23 @@ func TestUpdate(t *testing.T) {
 	account_id := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
-	repo := NewRepository(dynamoClient)
 	router := httprouter.New()
-	h := &Handler{
-		repo: *repo,
-	}
+	h := NewHandler(dynamoClient)
 	h.SetupRouter(router)
 
-	client := utils.Must(
-		repo.Create(
-			context.Background(), CreateOptions{
-				Secret:    "pa$$word",
-				Name:      "Test1",
-				AndroidID: uuid.NewString(),
-				AccountID: account_id,
-			},
-		),
+	client, err := h.repo.Create(
+		context.Background(), CreateOptions{
+			Secret:    "pa$$word",
+			Name:      "Test1",
+			AndroidID: uuid.NewString(),
+			AccountID: account_id,
+		},
 	)
+	a.NoError(err)
 
 	body := &UpdateClientRequest{Name: "Test2"}
 	buf := new(bytes.Buffer)
-	err := json.NewEncoder(buf).Encode(body)
-	a.NoError(err)
+	a.NoError(json.NewEncoder(buf).Encode(body))
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", client.ID), buf)
 	r.Header.Add(account.IDHeader, account_id)
@@ -457,8 +432,7 @@ func TestUpdate(t *testing.T) {
 	res := w.Result()
 
 	var response Client
-	err = json.NewDecoder(res.Body).Decode(&response)
-	a.NoError(err)
+	a.NoError(json.NewDecoder(res.Body).Decode(&response))
 
 	a.Equal(client.ID, response.ID)
 	a.Equal(body.Name, response.Name, "Name has been updated")
@@ -473,23 +447,19 @@ func TestRegenerateSecret(t *testing.T) {
 	account_id := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
-	repo := NewRepository(dynamoClient)
 	router := httprouter.New()
-	h := &Handler{
-		repo: *repo,
-	}
+	h := NewHandler(dynamoClient)
 	h.SetupRouter(router)
 
-	client := utils.Must(
-		repo.Create(
-			context.Background(), CreateOptions{
-				Secret:    "pa$$word",
-				Name:      "Test1",
-				AndroidID: uuid.NewString(),
-				AccountID: account_id,
-			},
-		),
+	client, err := h.repo.Create(
+		context.Background(), CreateOptions{
+			Secret:    "pa$$word",
+			Name:      "Test1",
+			AndroidID: uuid.NewString(),
+			AccountID: account_id,
+		},
 	)
+	a.NoError(err)
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s/secret", client.ID), nil)
 	r.Header.Add(account.IDHeader, account_id)
@@ -500,10 +470,9 @@ func TestRegenerateSecret(t *testing.T) {
 	res := w.Result()
 
 	var response RegenerateSecretResponse
-	err := json.NewDecoder(res.Body).Decode(&response)
-	a.NoError(err)
+	a.NoError(json.NewDecoder(res.Body).Decode(&response))
 
-	updated_client, err := repo.Get(context.Background(), GetOptions{ID: client.ID, AccountID: account_id})
+	updated_client, err := h.repo.Get(context.Background(), GetOptions{ID: client.ID, AccountID: account_id})
 	a.NoError(err)
 
 	a.Equal(client.ID, updated_client.ID, "Client.ID is unchanged")
