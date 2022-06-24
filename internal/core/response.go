@@ -35,6 +35,15 @@ func NotFoundResponse(w http.ResponseWriter, resource string) {
 	})
 }
 
+func MethodNotAllowedResponse(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	JSONResponse(w, errorsx.Errors{
+		Errors: []errorsx.Error{
+			errorsx.MethodNotAllowedError(),
+		},
+	})
+}
+
 func InternalErrorResponse(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 	// NB: Here we duplicate `JSONResponse` to avoid an infinite loop

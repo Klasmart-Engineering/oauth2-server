@@ -56,6 +56,14 @@ func NotFoundError(resource string) Error {
 	}
 }
 
+func MethodNotAllowedError() Error {
+	return Error{
+		Category: category.INVALID_REQUEST,
+		Code:     code.INVALID_METHOD,
+		Message:  "Method not allowed.",
+	}
+}
+
 func InternalError() Error {
 	return Error{
 		Category: category.INTERNAL,

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/KL-Engineering/oauth2-server/internal/client"
+	"github.com/KL-Engineering/oauth2-server/internal/core"
 	"github.com/KL-Engineering/oauth2-server/internal/crypto"
 	"github.com/KL-Engineering/oauth2-server/internal/monitoring"
 	"github.com/KL-Engineering/oauth2-server/internal/oauth2"
@@ -16,6 +17,8 @@ import (
 
 func NewServer(d *dynamodb.Client) *http.Server {
 	router := httprouter.New()
+
+	core.NewHandler().SetupRouter(router)
 
 	router.GET("/health", monitoring.HealthHandler)
 
