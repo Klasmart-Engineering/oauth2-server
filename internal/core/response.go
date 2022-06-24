@@ -10,8 +10,7 @@ import (
 
 func JSONResponse(w http.ResponseWriter, response interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(response)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("ERROR: JSON Marshal: %v", err)
 		InternalErrorResponse(w)
 	}
@@ -49,10 +48,9 @@ func InternalErrorResponse(w http.ResponseWriter) {
 	// NB: Here we duplicate `JSONResponse` to avoid an infinite loop
 	// incase we break `errorsx.InternalError()`
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(errorsx.Errors{
+	if err := json.NewEncoder(w).Encode(errorsx.Errors{
 		Errors: []errorsx.Error{errorsx.InternalError()},
-	})
-	if err != nil {
+	}); err != nil {
 		log.Printf("ERROR: JSON Marshal: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}

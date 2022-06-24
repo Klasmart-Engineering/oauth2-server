@@ -60,8 +60,7 @@ func TestMiddlewareWithoutHeader(t *testing.T) {
 	a.Equal(http.StatusBadRequest, res.StatusCode)
 
 	var response errorsx.Errors
-	err := json.NewDecoder(res.Body).Decode(&response)
-	a.NoError(err)
+	a.NoError(json.NewDecoder(res.Body).Decode(&response))
 
 	a.Equal(
 		errorsx.Errors(

@@ -73,8 +73,7 @@ func (h *Handler) Create() httprouter.Handle {
 		accountID := account.GetAccountIdFromCtx(ctx)
 
 		var req CreateClientRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.BadRequestResponse(
 				w,
 				errorsx.InvalidArgumentError("name"),
@@ -151,8 +150,7 @@ func (h *Handler) Delete() httprouter.Handle {
 		accountID := account.GetAccountIdFromCtx(ctx)
 		id := ps.ByName("id")
 
-		err := h.repo.Delete(ctx, DeleteOptions{accountID: accountID, id: id})
-		if err != nil {
+		if err := h.repo.Delete(ctx, DeleteOptions{accountID: accountID, id: id}); err != nil {
 			if err == core.ErrNotFound {
 				core.NotFoundResponse(w, id)
 			} else {
@@ -178,8 +176,7 @@ func (h *Handler) Update() httprouter.Handle {
 		id := ps.ByName("id")
 
 		var req UpdateClientRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			core.BadRequestResponse(
 				w,
 				errorsx.InvalidArgumentError("name"),

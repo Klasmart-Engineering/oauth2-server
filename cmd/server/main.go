@@ -43,8 +43,7 @@ func NewServer(d *dynamodb.Client) *http.Server {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil{
 		// Only necessary for local development
 		log.Print("INFO: Did not load .env file")
 	}

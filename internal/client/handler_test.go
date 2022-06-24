@@ -46,8 +46,7 @@ func TestListEmpty(t *testing.T) {
 	res := w.Result()
 
 	var response ListResponse
-	err := json.NewDecoder(res.Body).Decode(&response)
-	a.NoError(err)
+	a.NoError(json.NewDecoder(res.Body).Decode(&response))
 
 	a.Equal(ListResponse{
 		Records: []Client{},
