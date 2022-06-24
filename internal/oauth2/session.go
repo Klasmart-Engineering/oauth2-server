@@ -41,7 +41,7 @@ func NewSession(subject string) *Session {
 			},
 			Subject: subject,
 		},
-		Extra: map[string]interface{}{},
+		Extra: make(map[string]interface{}),
 	}
 }
 
@@ -75,7 +75,7 @@ func (s *Session) GetJWTClaims() jwt.JWTClaimsContainer {
 	}
 
 	if claims.Extra == nil {
-		claims.Extra = map[string]interface{}{}
+		claims.Extra = make(map[string]interface{})
 	}
 	claims.Extra["account_id"] = s.AccountID
 	claims.Extra["android_id"] = s.AndroidID
