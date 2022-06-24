@@ -8,6 +8,7 @@ import (
 	"github.com/KL-Engineering/oauth2-server/internal/account"
 	"github.com/KL-Engineering/oauth2-server/internal/core"
 	"github.com/KL-Engineering/oauth2-server/internal/crypto"
+	"github.com/KL-Engineering/oauth2-server/internal/errorsx"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
@@ -46,7 +47,7 @@ func (h *Handler) List() httprouter.Handle {
 		clients, err := h.repo.List(ctx, ListOptions{AccountID: account_id})
 		if err != nil {
 			log.Printf("ERROR: List Client: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			core.InternalErrorResponse(w)
 			return
 		}
 
@@ -74,7 +75,10 @@ func (h *Handler) Create() httprouter.Handle {
 		var req CreateClientRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			core.BadRequestResponse(
+				w,
+				errorsx.InvalidArgumentError("name"),
+			)
 			return
 		}
 
@@ -83,14 +87,14 @@ func (h *Handler) Create() httprouter.Handle {
 		android_id, err := uuid.NewRandom()
 		if err != nil {
 			log.Printf("ERROR: Failed to create android_id")
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			core.InternalErrorResponse(w)
 			return
 		}
 
 		secret, err := crypto.GenerateSecret()
 		if err != nil {
 			log.Printf("ERROR: crypto.GenerateSecret: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			core.InternalErrorResponse(w)
 			return
 		}
 
@@ -103,7 +107,7 @@ func (h *Handler) Create() httprouter.Handle {
 		if err != nil {
 			// TODO specific codes in case of bad request
 			log.Printf("ERROR: Create Client: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			core.InternalErrorResponse(w)
 			return
 		}
 
@@ -129,10 +133,10 @@ func (h *Handler) Get() httprouter.Handle {
 		client, err := h.repo.Get(ctx, GetOptions{AccountID: account_id, ID: id})
 		if err != nil {
 			if err == core.ErrNotFound {
-				http.Error(w, err.Error(), http.StatusNotFound)
+				core.NotFoundResponse(w, id)
 			} else {
 				log.Printf("ERROR: Get Client: %v", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.InternalErrorResponse(w)
 			}
 			return
 		}
@@ -150,10 +154,10 @@ func (h *Handler) Delete() httprouter.Handle {
 		err := h.repo.Delete(ctx, DeleteOptions{account_id: account_id, id: id})
 		if err != nil {
 			if err == core.ErrNotFound {
-				http.Error(w, err.Error(), http.StatusNotFound)
+				core.NotFoundResponse(w, id)
 			} else {
 				log.Printf("ERROR: Delete Client: %v", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.InternalErrorResponse(w)
 			}
 			return
 		}
@@ -176,7 +180,10 @@ func (h *Handler) Update() httprouter.Handle {
 		var req UpdateClientRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			core.BadRequestResponse(
+				w,
+				errorsx.InvalidArgumentError("name"),
+			)
 			return
 		}
 
@@ -184,10 +191,10 @@ func (h *Handler) Update() httprouter.Handle {
 
 		if err != nil {
 			if err == core.ErrNotFound {
-				http.Error(w, err.Error(), http.StatusNotFound)
+				core.NotFoundResponse(w, id)
 			} else {
 				log.Printf("ERROR: Update Client: %v", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.InternalErrorResponse(w)
 			}
 			return
 		}
@@ -209,7 +216,7 @@ func (h *Handler) RegenerateSecret() httprouter.Handle {
 		secret, err := crypto.GenerateSecret()
 		if err != nil {
 			log.Printf("ERROR: crypto.GenerateSecret: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			core.InternalErrorResponse(w)
 			return
 		}
 
@@ -217,10 +224,10 @@ func (h *Handler) RegenerateSecret() httprouter.Handle {
 
 		if err != nil {
 			if err == core.ErrNotFound {
-				http.Error(w, err.Error(), http.StatusNotFound)
+				core.NotFoundResponse(w, id)
 			} else {
 				log.Printf("ERROR: Update Client: %v", err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				core.InternalErrorResponse(w)
 			}
 			return
 		}

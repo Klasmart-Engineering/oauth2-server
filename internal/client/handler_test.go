@@ -11,6 +11,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/KL-Engineering/oauth2-server/internal/account"
 	"github.com/KL-Engineering/oauth2-server/internal/core"
 	"github.com/KL-Engineering/oauth2-server/internal/storage"
 	"github.com/KL-Engineering/oauth2-server/internal/utils"
@@ -37,7 +38,7 @@ func TestListEmpty(t *testing.T) {
 	h.SetupRouter(router)
 
 	r := httptest.NewRequest(http.MethodGet, "/clients", nil)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -91,7 +92,7 @@ func TestList(t *testing.T) {
 	h.SetupRouter(router)
 
 	r := httptest.NewRequest(http.MethodGet, "/clients", nil)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -141,7 +142,7 @@ func TestCreateValid(t *testing.T) {
 
 	// TODO abstract
 	account_id := uuid.New().String()
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 
@@ -194,7 +195,7 @@ func TestGetNotFound(t *testing.T) {
 	id := "non-existent"
 
 	r := httptest.NewRequest("GET", fmt.Sprintf("/clients/%s", id), nil)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	(&Handler{
@@ -218,7 +219,7 @@ func TestGetValid(t *testing.T) {
 	client := utils.Must(repo.Create(context.Background(), CreateOptions{Secret: "pa$$word", Name: "Test", AndroidID: uuid.NewString(), AccountID: account_id}))
 
 	r := httptest.NewRequest("GET", fmt.Sprintf("/clients/%s", client.ID), nil)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	(&Handler{
@@ -251,7 +252,7 @@ func TestDeleteNotFound(t *testing.T) {
 	h.SetupRouter(router)
 
 	r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/clients/%s", uuid.New()), nil)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -286,7 +287,7 @@ func TestDelete(t *testing.T) {
 	)
 
 	r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/clients/%s", client.ID), nil)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -325,7 +326,7 @@ func TestUpdateNotFound(t *testing.T) {
 	a.NoError(err)
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", uuid.New()), buf)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -365,7 +366,7 @@ func TestUpdate(t *testing.T) {
 	a.NoError(err)
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", client.ID), buf)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -408,7 +409,7 @@ func TestRegenerateSecret(t *testing.T) {
 	)
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s/secret", client.ID), nil)
-	r.Header.Add("X-Account-Id", account_id)
+	r.Header.Add(account.IDHeader, account_id)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
