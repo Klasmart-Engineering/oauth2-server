@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	HMAC_SECRET_PATH = "internal/crypto/hmac_secret"
+	hmacSecretPath = "internal/crypto/hmac_secret"
 )
 
 var (
@@ -50,9 +50,9 @@ func (h *Hasher) Compare(ctx context.Context, hash, data []byte) error {
 }
 
 func LoadHMACSecret() ([]byte, error) {
-	bytes, err := ioutil.ReadFile(HMAC_SECRET_PATH)
+	bytes, err := ioutil.ReadFile(hmacSecretPath)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("Failed to read file at path: %s", HMAC_SECRET_PATH))
+		return nil, errors.Wrap(err, fmt.Sprintf("Failed to read file at path: %s", hmacSecretPath))
 	}
 
 	return bytes, nil

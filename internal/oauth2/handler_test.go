@@ -231,8 +231,8 @@ func assertTokenPayloadValid(a *assert.Assertions, tokenResponse *oauth2.Token, 
 	a.Equal([]interface{}{}, claims["scp"], "scopes is empty")
 	a.Equal(client.ID, claims["sub"])
 
-	a.Equal(client.Account_ID, claims["account_id"])
-	a.Equal(client.Android_ID, claims["android_id"])
+	a.Equal(client.AccountID, claims["account_id"])
+	a.Equal(client.AndroidID, claims["android_id"])
 	// TODO `subscription_id` claim
 }
 

@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	PRIVATE_KEY_PATH = "internal/crypto/private.pem"
-	PUBLIC_KEY_PATH  = "internal/crypto/public.pem"
+	privateKeyPath = "internal/crypto/private.pem"
+	publicKeyPath  = "internal/crypto/public.pem"
 	KID              = "2c7ef7a0-913f-458d-8c84-be44b3091cb3"
 )
 
 func LoadPrivateKey() (*rsa.PrivateKey, error) {
-	bytes, err := loadRSAKeyFile(PRIVATE_KEY_PATH)
+	bytes, err := loadRSAKeyFile(privateKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func parseRSAPrivateKey(bytes []byte) (*rsa.PrivateKey, error) {
 
 func JWKS() (*jose.JSONWebKeySet, error) {
 	// TODO: replace with AWS KMS
-	bytes, err := loadRSAKeyFile(PUBLIC_KEY_PATH)
+	bytes, err := loadRSAKeyFile(publicKeyPath)
 	if err != nil {
 		return &jose.JSONWebKeySet{}, err
 	}

@@ -82,25 +82,25 @@ func (repo *Repository) Create(ctx context.Context, opts CreateOptions) (*Client
 	}
 
 	client := Client{
-		ID:            id.String(),
-		Secret_Prefix: opts.Secret[:secretPrefixLength],
-		Secret_Hash:   hash,
-		Name:          opts.Name,
-		Android_ID:    opts.AndroidID,
-		Account_ID:    opts.AccountID,
+		ID:           id.String(),
+		SecretPrefix: opts.Secret[:secretPrefixLength],
+		SecretHash:   hash,
+		Name:         opts.Name,
+		AndroidID:    opts.AndroidID,
+		AccountID:    opts.AccountID,
 	}
 
 	input := dynamodb.PutItemInput{
 		TableName: aws.String(tableName),
 		Item: map[string]types.AttributeValue{
-			"pk":            &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", client.Account_ID)},
+			"pk":            &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", client.AccountID)},
 			"sk":            &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", client.ID)},
 			"id":            &types.AttributeValueMemberS{Value: client.ID},
-			"secret":        &types.AttributeValueMemberS{Value: client.Secret_Hash},
-			"secret_prefix": &types.AttributeValueMemberS{Value: client.Secret_Prefix},
+			"secret":        &types.AttributeValueMemberS{Value: client.SecretHash},
+			"secret_prefix": &types.AttributeValueMemberS{Value: client.SecretPrefix},
 			"name":          &types.AttributeValueMemberS{Value: client.Name},
-			"android_id":    &types.AttributeValueMemberS{Value: client.Android_ID},
-			"account_id":    &types.AttributeValueMemberS{Value: client.Account_ID},
+			"android_id":    &types.AttributeValueMemberS{Value: client.AndroidID},
+			"account_id":    &types.AttributeValueMemberS{Value: client.AccountID},
 		},
 		ConditionExpression: aws.String("attribute_not_exists(pk)"),
 	}
@@ -177,15 +177,15 @@ func (repo *Repository) GetByID(ctx context.Context, id string) (*Client, error)
 }
 
 type DeleteOptions struct {
-	account_id string
-	id         string
+	accountID string
+	id        string
 }
 
 func (repo *Repository) Delete(ctx context.Context, opts DeleteOptions) error {
 	_, err := repo.dynamodb.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(tableName),
 		Key: map[string]types.AttributeValue{
-			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.account_id)},
+			"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", opts.accountID)},
 			"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", opts.id)},
 		},
 		ConditionExpression: aws.String("attribute_exists(pk)"),

@@ -42,9 +42,9 @@ func (h *Handler) List() httprouter.Handle {
 		// NB: This endpoint could easily support limit pagination
 		// However, we would need to implement cursor based pagination to have "offset" functionality
 		ctx := r.Context()
-		account_id := account.GetAccountIdFromCtx(ctx)
+		accountID := account.GetAccountIdFromCtx(ctx)
 
-		clients, err := h.repo.List(ctx, ListOptions{AccountID: account_id})
+		clients, err := h.repo.List(ctx, ListOptions{AccountID: accountID})
 		if err != nil {
 			log.Printf("ERROR: List Client: %v", err)
 			core.InternalErrorResponse(w)
@@ -70,7 +70,7 @@ type CreateClientResponse struct {
 func (h *Handler) Create() httprouter.Handle {
 	return account.Middleware(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		ctx := r.Context()
-		account_id := account.GetAccountIdFromCtx(ctx)
+		accountID := account.GetAccountIdFromCtx(ctx)
 
 		var req CreateClientRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -84,7 +84,7 @@ func (h *Handler) Create() httprouter.Handle {
 
 		// TODO will in future need to accept external `android_id` from accounts rather than generating one here
 		// but this functionality is not available currently
-		android_id, err := uuid.NewRandom()
+		androidID, err := uuid.NewRandom()
 		if err != nil {
 			log.Printf("ERROR: Failed to create android_id")
 			core.InternalErrorResponse(w)
@@ -101,8 +101,8 @@ func (h *Handler) Create() httprouter.Handle {
 		client, err := h.repo.Create(ctx, CreateOptions{
 			Secret:    secret,
 			Name:      req.Name,
-			AndroidID: android_id.String(),
-			AccountID: account_id,
+			AndroidID: androidID.String(),
+			AccountID: accountID,
 		})
 		if err != nil {
 			// TODO specific codes in case of bad request
@@ -127,10 +127,10 @@ func (h *Handler) Create() httprouter.Handle {
 func (h *Handler) Get() httprouter.Handle {
 	return account.Middleware(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		ctx := r.Context()
-		account_id := account.GetAccountIdFromCtx(ctx)
+		accountID := account.GetAccountIdFromCtx(ctx)
 		id := ps.ByName("id")
 
-		client, err := h.repo.Get(ctx, GetOptions{AccountID: account_id, ID: id})
+		client, err := h.repo.Get(ctx, GetOptions{AccountID: accountID, ID: id})
 		if err != nil {
 			if err == core.ErrNotFound {
 				core.NotFoundResponse(w, id)
@@ -148,10 +148,10 @@ func (h *Handler) Get() httprouter.Handle {
 func (h *Handler) Delete() httprouter.Handle {
 	return account.Middleware(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		ctx := r.Context()
-		account_id := account.GetAccountIdFromCtx(ctx)
+		accountID := account.GetAccountIdFromCtx(ctx)
 		id := ps.ByName("id")
 
-		err := h.repo.Delete(ctx, DeleteOptions{account_id: account_id, id: id})
+		err := h.repo.Delete(ctx, DeleteOptions{accountID: accountID, id: id})
 		if err != nil {
 			if err == core.ErrNotFound {
 				core.NotFoundResponse(w, id)
@@ -174,7 +174,7 @@ type UpdateClientRequest struct {
 func (h *Handler) Update() httprouter.Handle {
 	return account.Middleware(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		ctx := r.Context()
-		account_id := account.GetAccountIdFromCtx(ctx)
+		accountID := account.GetAccountIdFromCtx(ctx)
 		id := ps.ByName("id")
 
 		var req UpdateClientRequest
@@ -187,7 +187,14 @@ func (h *Handler) Update() httprouter.Handle {
 			return
 		}
 
-		client, err := h.repo.Update(ctx, UpdateOptions{AccountID: account_id, ID: id, Name: req.Name})
+		client, err := h.repo.Update(
+			ctx,
+			UpdateOptions{
+				AccountID: accountID,
+				ID:        id,
+				Name:      req.Name,
+			},
+		)
 
 		if err != nil {
 			if err == core.ErrNotFound {
@@ -210,7 +217,7 @@ type RegenerateSecretResponse struct {
 func (h *Handler) RegenerateSecret() httprouter.Handle {
 	return account.Middleware(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		ctx := r.Context()
-		account_id := account.GetAccountIdFromCtx(ctx)
+		accountID := account.GetAccountIdFromCtx(ctx)
 		id := ps.ByName("id")
 
 		secret, err := crypto.GenerateSecret()
@@ -220,7 +227,7 @@ func (h *Handler) RegenerateSecret() httprouter.Handle {
 			return
 		}
 
-		_, err = h.repo.Update(ctx, UpdateOptions{AccountID: account_id, ID: id, Secret: secret})
+		_, err = h.repo.Update(ctx, UpdateOptions{AccountID: accountID, ID: id, Secret: secret})
 
 		if err != nil {
 			if err == core.ErrNotFound {

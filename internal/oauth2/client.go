@@ -26,7 +26,7 @@ func (c *FositeClient) GetID() string {
 }
 
 func (c *FositeClient) GetHashedSecret() []byte {
-	return []byte(c.model.Secret_Hash)
+	return []byte(c.model.SecretHash)
 }
 
 func (c *FositeClient) GetRedirectURIs() []string {
@@ -59,9 +59,9 @@ func (c *FositeClient) GetAudience() fosite.Arguments {
 }
 
 func (c *FositeClient) GetAccountID() string {
-	return c.model.Account_ID
+	return c.model.AccountID
 }
 
 func (c *FositeClient) GetAndroidID() string {
-	return c.model.Android_ID
+	return c.model.AndroidID
 }

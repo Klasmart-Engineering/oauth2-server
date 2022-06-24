@@ -13,12 +13,12 @@ func TestJSONMarshal(t *testing.T) {
 	a := assert.New(t)
 
 	client := Client{
-		ID:            uuid.NewString(),
-		Name:          "Test",
-		Secret_Prefix: "abc",
-		Secret_Hash:   "abcdef",
-		Android_ID:    uuid.NewString(),
-		Account_ID:    uuid.NewString(),
+		ID:           uuid.NewString(),
+		Name:         "Test",
+		SecretPrefix: "abc",
+		SecretHash:   "abcdef",
+		AndroidID:    uuid.NewString(),
+		AccountID:    uuid.NewString(),
 	}
 
 	bytes, err := json.Marshal(client)
@@ -27,7 +27,7 @@ func TestJSONMarshal(t *testing.T) {
 	expected := utils.Must(json.Marshal(map[string]interface{}{
 		"id":            client.ID,
 		"name":          client.Name,
-		"secret_prefix": client.Secret_Prefix,
+		"secret_prefix": client.SecretPrefix,
 	}))
 	a.JSONEq(string(bytes), string(expected), "Does not include 'secret'")
 }

@@ -12,11 +12,11 @@ import (
 const IDHeader = "X-Account-ID"
 
 // Add X-Account-Id header to request context
-// (set by microgateway from parsed `android_id` claim in JWT)
+// (set by microgateway from parsed `account_id` claim in JWT)
 func Middleware(next httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		account_id := r.Header.Get(IDHeader)
-		if account_id == "" {
+		accountID := r.Header.Get(IDHeader)
+		if accountID == "" {
 			core.BadRequestResponse(
 				w,
 				errorsx.RequiredHeaderError(IDHeader),
@@ -24,7 +24,7 @@ func Middleware(next httprouter.Handle) httprouter.Handle {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), accountCtxKey, account_id)
+		ctx := context.WithValue(r.Context(), accountCtxKey, accountID)
 		next(w, r.WithContext(ctx), ps)
 	}
 }

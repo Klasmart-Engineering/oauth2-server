@@ -29,7 +29,7 @@ import (
 func TestListEmpty(t *testing.T) {
 	a := assert.New(t)
 
-	account_id := uuid.New().String()
+	accountID := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 
@@ -38,7 +38,7 @@ func TestListEmpty(t *testing.T) {
 	h.SetupRouter(router)
 
 	r := httptest.NewRequest(http.MethodGet, "/clients", nil)
-	r.Header.Add(account.IDHeader, account_id)
+	r.Header.Add(account.IDHeader, accountID)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -58,7 +58,7 @@ func TestListEmpty(t *testing.T) {
 func TestList(t *testing.T) {
 	a := assert.New(t)
 
-	account_id := uuid.New().String()
+	accountID := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 
@@ -68,14 +68,14 @@ func TestList(t *testing.T) {
 		Secret:    "pa$$word",
 		Name:      "Test1",
 		AndroidID: uuid.NewString(),
-		AccountID: account_id,
+		AccountID: accountID,
 	})
 	a.NoError(err)
 	client2, err := repo.Create(context.Background(), CreateOptions{
 		Secret:    "pa$$word",
 		Name:      "Test2",
 		AndroidID: uuid.NewString(),
-		AccountID: account_id,
+		AccountID: accountID,
 	})
 	a.NoError(err)
 
@@ -92,7 +92,7 @@ func TestList(t *testing.T) {
 	h.SetupRouter(router)
 
 	r := httptest.NewRequest(http.MethodGet, "/clients", nil)
-	r.Header.Add(account.IDHeader, account_id)
+	r.Header.Add(account.IDHeader, accountID)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -142,8 +142,8 @@ func TestCreateValid(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "/clients", buf)
 	w := httptest.NewRecorder()
 
-	account_id := uuid.New().String()
-	r.Header.Add(account.IDHeader, account_id)
+	accountID := uuid.New().String()
+	r.Header.Add(account.IDHeader, accountID)
 
 	router.ServeHTTP(w, r)
 	res := w.Result()
@@ -158,7 +158,7 @@ func TestCreateValid(t *testing.T) {
 	a.Equal(res.StatusCode, http.StatusCreated)
 
 	output, err := db.GetItem(context.Background(), &dynamodb.GetItemInput{Key: map[string]types.AttributeValue{
-		"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", account_id)},
+		"pk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Account#%s", accountID)},
 		"sk": &types.AttributeValueMemberS{Value: fmt.Sprintf("Client#%s", response.ID)},
 	},
 		TableName: aws.String(tableName),
@@ -168,14 +168,14 @@ func TestCreateValid(t *testing.T) {
 	var client Client
 	a.Nil(attributevalue.UnmarshalMap(output.Item, &client))
 
-	a.Equal(client.Account_ID, account_id)
-	a.True(utils.IsUUID(client.Android_ID))
+	a.Equal(client.AccountID, accountID)
+	a.True(utils.IsUUID(client.AndroidID))
 	a.Equal(client.ID, response.ID)
 	a.Equal(client.Name, response.Name)
-	a.Equal(client.Secret_Prefix, response.Secret[:secretPrefixLength])
+	a.Equal(client.SecretPrefix, response.Secret[:secretPrefixLength])
 
-	password_match := utils.Must(argon2id.ComparePasswordAndHash(response.Secret, client.Secret_Hash))
-	a.True(password_match)
+	passwordMatch := utils.Must(argon2id.ComparePasswordAndHash(response.Secret, client.SecretHash))
+	a.True(passwordMatch)
 }
 
 func TestGetNotFound(t *testing.T) {
@@ -225,7 +225,7 @@ func TestGetValid(t *testing.T) {
 	a := assert.New(t)
 
 	// TODO abstract
-	account_id := uuid.New().String()
+	accountID := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 
@@ -233,11 +233,18 @@ func TestGetValid(t *testing.T) {
 	h := NewHandler(dynamoClient)
 	h.SetupRouter(router)
 
-	client, err := h.repo.Create(context.Background(), CreateOptions{Secret: "pa$$word", Name: "Test", AndroidID: uuid.NewString(), AccountID: account_id})
+	client, err := h.repo.Create(
+		context.Background(),
+		CreateOptions{
+			Secret:    "pa$$word",
+			Name:      "Test",
+			AndroidID: uuid.NewString(),
+			AccountID: accountID,
+		})
 	a.NoError(err)
 
 	r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/clients/%s", client.ID), nil)
-	r.Header.Add(account.IDHeader, account_id)
+	r.Header.Add(account.IDHeader, accountID)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, r)
 	res := w.Result()
@@ -248,8 +255,8 @@ func TestGetValid(t *testing.T) {
 
 	a.Equal(response.ID, client.ID)
 	a.Equal(response.Name, client.Name)
-	a.Equal(response.Secret_Prefix, client.Secret_Prefix)
-	a.Equal(response.Secret_Hash, "")
+	a.Equal(response.SecretPrefix, client.SecretPrefix)
+	a.Equal(response.SecretHash, "")
 
 	a.Equal(res.StatusCode, http.StatusOK)
 }
@@ -257,7 +264,7 @@ func TestGetValid(t *testing.T) {
 func TestDeleteNotFound(t *testing.T) {
 	a := assert.New(t)
 
-	account_id := uuid.New().String()
+	accountID := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 
@@ -266,7 +273,7 @@ func TestDeleteNotFound(t *testing.T) {
 	h.SetupRouter(router)
 
 	r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/clients/%s", uuid.New()), nil)
-	r.Header.Add(account.IDHeader, account_id)
+	r.Header.Add(account.IDHeader, accountID)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -305,7 +312,7 @@ func TestDeleteUnauthorized(t *testing.T) {
 func TestDelete(t *testing.T) {
 	a := assert.New(t)
 
-	account_id := uuid.New().String()
+	accountID := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 	router := httprouter.New()
@@ -317,22 +324,22 @@ func TestDelete(t *testing.T) {
 			Secret:    "pa$$word",
 			Name:      "Test",
 			AndroidID: uuid.NewString(),
-			AccountID: account_id,
+			AccountID: accountID,
 		},
 	)
 	a.NoError(err)
 
 	r := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/clients/%s", client.ID), nil)
-	r.Header.Add(account.IDHeader, account_id)
+	r.Header.Add(account.IDHeader, accountID)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, r)
 	res := w.Result()
 
 	a.Equal(http.StatusNoContent, res.StatusCode, "First DELETE returns NoContent")
 
-	empty_client, err := h.repo.Get(context.Background(), GetOptions{AccountID: client.Account_ID, ID: client.ID})
+	emptyClient, err := h.repo.Get(context.Background(), GetOptions{AccountID: client.AccountID, ID: client.ID})
 	a.Equal(err, core.ErrNotFound, "Client is deleted")
-	a.Nil(empty_client)
+	a.Nil(emptyClient)
 
 	w = httptest.NewRecorder()
 
@@ -346,7 +353,7 @@ func TestDelete(t *testing.T) {
 func TestUpdateNotFound(t *testing.T) {
 	a := assert.New(t)
 
-	account_id := uuid.New().String()
+	accountID := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 
@@ -359,7 +366,7 @@ func TestUpdateNotFound(t *testing.T) {
 	a.NoError(json.NewEncoder(buf).Encode(body))
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", uuid.New()), buf)
-	r.Header.Add(account.IDHeader, account_id)
+	r.Header.Add(account.IDHeader, accountID)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -402,7 +409,7 @@ func TestUpdateUnauthorized(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	a := assert.New(t)
 
-	account_id := uuid.New().String()
+	accountID := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 	router := httprouter.New()
@@ -414,7 +421,7 @@ func TestUpdate(t *testing.T) {
 			Secret:    "pa$$word",
 			Name:      "Test1",
 			AndroidID: uuid.NewString(),
-			AccountID: account_id,
+			AccountID: accountID,
 		},
 	)
 	a.NoError(err)
@@ -424,7 +431,7 @@ func TestUpdate(t *testing.T) {
 	a.NoError(json.NewEncoder(buf).Encode(body))
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s", client.ID), buf)
-	r.Header.Add(account.IDHeader, account_id)
+	r.Header.Add(account.IDHeader, accountID)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -436,7 +443,7 @@ func TestUpdate(t *testing.T) {
 
 	a.Equal(client.ID, response.ID)
 	a.Equal(body.Name, response.Name, "Name has been updated")
-	a.Equal(client.Secret_Prefix, response.Secret_Prefix)
+	a.Equal(client.SecretPrefix, response.SecretPrefix)
 
 	a.Equal(http.StatusOK, res.StatusCode)
 }
@@ -444,7 +451,7 @@ func TestUpdate(t *testing.T) {
 func TestRegenerateSecret(t *testing.T) {
 	a := assert.New(t)
 
-	account_id := uuid.New().String()
+	accountID := uuid.New().String()
 
 	dynamoClient := utils.Must(storage.NewDynamoDBClient())
 	router := httprouter.New()
@@ -456,13 +463,13 @@ func TestRegenerateSecret(t *testing.T) {
 			Secret:    "pa$$word",
 			Name:      "Test1",
 			AndroidID: uuid.NewString(),
-			AccountID: account_id,
+			AccountID: accountID,
 		},
 	)
 	a.NoError(err)
 
 	r := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/clients/%s/secret", client.ID), nil)
-	r.Header.Add(account.IDHeader, account_id)
+	r.Header.Add(account.IDHeader, accountID)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, r)
@@ -472,17 +479,23 @@ func TestRegenerateSecret(t *testing.T) {
 	var response RegenerateSecretResponse
 	a.NoError(json.NewDecoder(res.Body).Decode(&response))
 
-	updated_client, err := h.repo.Get(context.Background(), GetOptions{ID: client.ID, AccountID: account_id})
+	updatedClient, err := h.repo.Get(
+		context.Background(),
+		GetOptions{
+			ID:        client.ID,
+			AccountID: accountID,
+		},
+	)
 	a.NoError(err)
 
-	a.Equal(client.ID, updated_client.ID, "Client.ID is unchanged")
-	a.Equal(client.Name, updated_client.Name, "Client.Name is unchanged")
+	a.Equal(client.ID, updatedClient.ID, "Client.ID is unchanged")
+	a.Equal(client.Name, updatedClient.Name, "Client.Name is unchanged")
 
-	a.Equal(updated_client.Secret_Prefix, response.Secret[:secretPrefixLength])
-	a.NotEqual(client.Secret_Prefix, updated_client.Secret_Prefix)
+	a.Equal(updatedClient.SecretPrefix, response.Secret[:secretPrefixLength])
+	a.NotEqual(client.SecretPrefix, updatedClient.SecretPrefix)
 
-	a.True(utils.Must(argon2id.ComparePasswordAndHash(response.Secret, updated_client.Secret_Hash)))
-	a.NotEqual(updated_client.Secret_Hash, client.Secret_Hash)
+	a.True(utils.Must(argon2id.ComparePasswordAndHash(response.Secret, updatedClient.SecretHash)))
+	a.NotEqual(updatedClient.SecretHash, client.SecretHash)
 }
 
 func TestRegenerateSecretNotFound(t *testing.T) {
